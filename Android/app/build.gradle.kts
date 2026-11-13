@@ -36,6 +36,10 @@ android {
 
     // The script for the hidden tab and the ad rules are the iPhone app's own files: one source for both apps.
     sourceSets["main"].assets.srcDir("../../Packages/BoomEngine/Sources/BoomPlayer/Resources")
+    // The Mac-side tests read the parts that need no device (the ad rules, the script's messages); android.jar's
+    // stubs answer with defaults instead of throwing, for the log lines on the way.
+    testOptions.unitTests.isReturnDefaultValues = true
+
     // The engine's on-device test plays the iPhone engine's own test tones, from where they are.
     sourceSets["androidTest"].assets.srcDir("../../Packages/BoomEngine/Tests/BoomAudioTests/Fixtures")
 }
@@ -54,6 +58,10 @@ dependencies {
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.activity:activity-compose:1.10.1")
+
+    testImplementation("junit:junit:4.13.2")
+    // android.jar's org.json is a stub; the tests use the real one.
+    testImplementation("org.json:json:20250517")
 
     androidTestImplementation("androidx.test:runner:1.6.2")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")

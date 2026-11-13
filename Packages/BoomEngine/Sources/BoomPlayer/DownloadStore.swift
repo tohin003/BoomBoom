@@ -249,6 +249,7 @@ public final class DownloadStore {
         guard !again.isEmpty else { return }
         save()
         backend?.startDownloads(again)
+        refreshHold()
     }
 
     // MARK: Removing

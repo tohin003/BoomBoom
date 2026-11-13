@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The launcher icon's mark. Generated from mark5 in Tools/IconGen/main.swift (the iPhone icon's mark); keep the two alike. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <path android:pathData="M54,54 m-26.156,0 a26.156,26.156 0 1,0 52.312,0 a26.156,26.156 0 1,0 -52.312,0 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="linear" android:startX="54" android:startY="27.844" android:endX="54" android:endY="80.156">
+                <item android:offset="0" android:color="#FFFFE566" />
+                <item android:offset="0.45" android:color="#FFFFD60A" />
+                <item android:offset="1" android:color="#FFFFC400" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <path android:pathData="M65.07,41.443 A16.74,16.74 0 0,1 65.07,66.557" android:strokeColor="#FF0B0B0B" android:strokeWidth="2.223"
+        android:strokeLineCap="round" />
+    <path android:pathData="M42.93,66.557 A16.74,16.74 0 0,1 42.93,41.443" android:strokeColor="#FF0B0B0B" android:strokeWidth="2.223"
+        android:strokeLineCap="round" />
+    <path android:pathData="M62.959,52.981 A1.177,1.177 0 0,1 62.959,55.019 L52.365,61.135 A1.177,1.177 0 0,1 50.6,60.116 L50.6,47.884 A1.177,1.177 0 0,1 52.365,46.865 Z" android:fillColor="#FF0B0B0B" />
+</vector>

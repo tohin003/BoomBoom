@@ -13,8 +13,15 @@ private final class StubAPI: MusicAPI, @unchecked Sendable {
         return WatchQueue(songs: [first] + rest, currentIndex: 0, continuation: "more-\(seed)",
                           lyricsBrowseId: "lyrics-\(seed)", relatedBrowseId: "related-\(seed)")
     }
+    /// How many of the next requests for more of a radio fail, as on a lost connection.
+    var continuationFailures = 0
+
     func watchQueueContinuation(_ token: String) async throws -> SongsContinuation {
-        SongsContinuation(songs: (1...3).map { Song(videoId: "\(token)-\($0)", title: "More \($0)", duration: 150) }, continuation: nil)
+        if continuationFailures > 0 {
+            continuationFailures -= 1
+            throw MusicAPIError.network("no connection")
+        }
+        return SongsContinuation(songs: (1...3).map { Song(videoId: "\(token)-\($0)", title: "More \($0)", duration: 150) }, continuation: nil)
     }
     func lyrics(browseId: String) async throws -> Lyrics { Lyrics(lines: [.init(text: browseId)]) }
     func related(browseId: String) async throws -> [Shelf] { [] }
@@ -156,6 +163,27 @@ private func songs(_ count: Int) -> [Song] {
         #expect(store.queue.count > 1)
     }
 
+    @Test func aFailedRequestForMoreDoesNotEndTheRadio() async throws {
+        let api = StubAPI()
+        api.continuationFailures = 1
+        let engine = SimulatedEngine()
+        engine.loadDelay = .milliseconds(5)
+        let store = PlayerStore(api: api, engine: engine, defaults: UserDefaults(suiteName: "boom.tests.\(UUID().uuidString)")!)
+        store.isAutoplayEnabled = false
+        store.play(Song(videoId: "x", title: "X", duration: 200))
+        #expect(await eventually { store.queue.count == 6 })
+        // Towards the end of the queue more of the radio is asked for; the first request fails.
+        for _ in 0..<5 {
+            store.next()
+            try await Task.sleep(for: .milliseconds(30))
+        }
+        #expect(await eventually { store.current?.videoId == "x-r5" })
+        // The radio's place was kept: there is still a next song to come, and asking again brings it.
+        #expect(store.hasNext)
+        store.next()
+        #expect(await eventually { store.queue.contains { $0.song.videoId == "more-x-1" } })
+    }
+
     @Test func likingTheCurrentSongStaysWithThatSong() async throws {
         let (store, _) = makeStore()
         store.play(songs: songs(3), startAt: 0)
@@ -292,6 +320,18 @@ private func songs(_ count: Int) -> [Song] {
         store.setBoost(5)
         #expect(!store.isComparing)
         #expect(sink.last?.isEnabled == true && sink.last?.boost == 5)
+    }
+
+    @Test func choosingThePresetAlreadyInEffectEndsAComparison() {
+        let sink = RecordingSink()
+        let store = EqualizerStore(sink: sink, defaults: UserDefaults(suiteName: "boom.tests.\(UUID().uuidString)")!)
+        let rock = EqualizerStore.builtInPresets.first { $0.id == "rock" }!
+        store.select(rock)
+        store.setComparing(true)
+        #expect(sink.last?.isEnabled == false)
+        store.select(rock)
+        #expect(!store.isComparing)
+        #expect(sink.last == store.settings)
     }
 
     @Test func settingsSavedByAnOlderVersionStillLoad() throws {

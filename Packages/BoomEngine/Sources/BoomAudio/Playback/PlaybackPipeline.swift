@@ -445,11 +445,14 @@ public final class PlaybackPipeline: @unchecked Sendable {
         let rate = decoder.outputFormat.sampleRate
         let leadIn = Double(info.leadIn) / Double(info.timescale) * rate
         let target = Int((start * rate + leadIn).rounded())
-        let wantedPacket = target / decoder.framesPerPacket
+        // The packet length is the stream's own (learnt from its first packets), not the codec's usual one: Opus
+        // packets are 20 ms as a rule, but a stream may use 40 or 60.
+        let packetFrames = max(1, Int((Double(deck.item.buffer.packetDuration) / Double(info.timescale) * rate).rounded()))
+        let wantedPacket = target / packetFrames
         let firstPacket = max(0, wantedPacket - decoder.prerollPackets)
         let ratio = Self.sampleRate / rate
         deck.nextPacket = firstPacket
-        deck.discard = Int((Double(target - firstPacket * decoder.framesPerPacket) * ratio).rounded())
+        deck.discard = Int((Double(target - firstPacket * packetFrames) * ratio).rounded())
         deck.startOffset = Int64((start * Self.sampleRate).rounded())
         decoder.reset()
         deck.resampler?.reset()

@@ -104,6 +104,17 @@ private func song(_ id: String, available: Bool = true) -> Song {
         #expect(store.state(of: "a") == .waiting && backend.started == ["a", "a"])
     }
 
+    @Test func tryingAgainOnMobileDataShowsTheWaitForWiFi() {
+        let backend = FakeDownloads()
+        let store = makeStore(backend)
+        store.download(song("a"))
+        backend.onDownloadEvent?(.failed(videoId: "a", message: "No connection."))
+        backend.isOnMobileData = true
+        #expect(!store.isWaitingForWiFi)          // nothing is pending while it stands as failed
+        store.retryFailed()
+        #expect(store.isWaitingForWiFi)
+    }
+
     @Test func theListSurvivesARestartAndCarriesOn() {
         let index = FileManager.default.temporaryDirectory.appending(path: "boom-downloads-\(UUID().uuidString).json")
         defer { try? FileManager.default.removeItem(at: index) }

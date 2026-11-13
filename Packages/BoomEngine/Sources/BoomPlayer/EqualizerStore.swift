@@ -531,9 +531,7 @@ public final class EqualizerStore {
         guard let index = presets.firstIndex(where: { $0.id == id && !$0.isBuiltIn }) else { return }
         presets.remove(at: index)
         saveCustomPresets()
-        setFavorite(false, presetID: id)
         if favoritePresetIDs.contains(id) {
-            // The preset is gone from `presets`, so `setFavorite` could not find it.
             favoritePresetIDs.removeAll { $0 == id }
             defaults.set(favoritePresetIDs, forKey: Keys.favoritePresets)
         }
@@ -559,7 +557,12 @@ public final class EqualizerStore {
     private func update(_ change: (inout SoundSettings) -> Void) {
         var next = settings
         change(&next)
-        guard next != settings else { return }
+        guard next != settings else {
+            // Nothing changed (the preset chosen is the one already in effect): the listener still touched a
+            // control, which ends a comparison.
+            if isComparing { setComparing(false) }
+            return
+        }
         settings = next
         isComparing = false
         // A preset stays selected only while the settings are still what it sets.

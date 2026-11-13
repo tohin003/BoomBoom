@@ -62,6 +62,7 @@ dependencies {
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.compose.ui:ui-tooling-preview")
+    // The system back gesture (BackHandler) and the share sheet.
     implementation("androidx.activity:activity-compose:1.10.1")
     implementation("io.coil-kt.coil3:coil-compose:3.3.0")
     implementation("io.coil-kt.coil3:coil-network-okhttp:3.3.0")
@@ -74,6 +75,7 @@ dependencies {
     testImplementation("androidx.compose.ui:ui-test-junit4")
     testImplementation("androidx.test.ext:junit:1.2.1")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")
+    testImplementation("androidx.test:core:1.6.1")
     testImplementation("io.github.takahirom.roborazzi:roborazzi:1.50.0")
     testImplementation("io.github.takahirom.roborazzi:roborazzi-compose:1.50.0")
     testImplementation("io.github.takahirom.roborazzi:roborazzi-junit-rule:1.50.0")

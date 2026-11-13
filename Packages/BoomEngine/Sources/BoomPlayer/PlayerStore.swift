@@ -114,7 +114,8 @@ public final class PlayerStore: PlaybackEngineDelegate {
     @ObservationIgnored private let engine: any PlaybackEngine
     @ObservationIgnored private let defaults: UserDefaults
     /// Loads more of a radio queue.
-    @ObservationIgnored private var continuation: String?
+    /// Where the radio carries on from. Observed, because whether there is a next song depends on it.
+    private var continuation: String?
     /// Goes up whenever the queue is replaced, so answers to older requests are dropped.
     @ObservationIgnored private var generation = 0
     @ObservationIgnored private var ticker: Task<Void, Never>?
@@ -580,9 +581,13 @@ public final class PlayerStore: PlaybackEngineDelegate {
             var songs: [Song] = []
             var nextToken: String?
             if let token {
-                let more = try? await api.watchQueueContinuation(token)
-                songs = more?.songs ?? []
-                nextToken = more?.continuation
+                guard let more = try? await api.watchQueueContinuation(token) else {
+                    // The request failed (a lost connection): the radio's place is kept, so that it carries on
+                    // the next time more is asked for, instead of ending here.
+                    return
+                }
+                songs = more.songs
+                nextToken = more.continuation
             } else if let radio = try? await api.watchQueue(WatchEndpoint(videoId: last.song.videoId)) {
                 songs = radio.songs
                 nextToken = radio.continuation

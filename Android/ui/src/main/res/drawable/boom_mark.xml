@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- BoomBoom's mark: a yellow disc, a black play mark between two black brackets. Generated from mark5 in Tools/IconGen/main.swift (the iPhone icon's mark); keep the two alike. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="100dp" android:height="100dp"
+    android:viewportWidth="100" android:viewportHeight="100">
+    <path android:pathData="M50,50 m-48.5,0 a48.5,48.5 0 1,0 97,0 a48.5,48.5 0 1,0 -97,0 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="linear" android:startX="50" android:startY="1.5" android:endX="50" android:endY="98.5">
+                <item android:offset="0" android:color="#FFFFE566" />
+                <item android:offset="0.45" android:color="#FFFFD60A" />
+                <item android:offset="1" android:color="#FFFFC400" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <path android:pathData="M70.527,26.717 A31.04,31.04 0 0,1 70.527,73.283" android:strokeColor="#FF0B0B0B" android:strokeWidth="4.123"
+        android:strokeLineCap="round" />
+    <path android:pathData="M29.473,73.283 A31.04,31.04 0 0,1 29.473,26.717" android:strokeColor="#FF0B0B0B" android:strokeWidth="4.123"
+        android:strokeLineCap="round" />
+    <path android:pathData="M66.611,48.11 A2.183,2.183 0 0,1 66.611,51.89 L46.969,63.23 A2.183,2.183 0 0,1 43.695,61.34 L43.695,38.66 A2.183,2.183 0 0,1 46.969,36.77 Z" android:fillColor="#FF0B0B0B" />
+</vector>
