@@ -248,18 +248,19 @@ extension Parse {
         }
         let panel = tabs[0]["tabRenderer", "content", "musicQueueRenderer", "content", "playlistPanelRenderer"]
         let rows = panel["contents"].array
-        let songs = rows.compactMap { row -> Song? in
-            if case .song(let song)? = item(row) { return song }
-            return nil
-        }
-        let selected = rows.compactMap { row -> Bool? in
+        // The songs and the place of the selected one are gathered together: a row that does not make a song (no
+        // video id, say) must not shift the selected song's place among those that do.
+        var songs: [Song] = []
+        var selectedIndex: Int?
+        for row in rows {
+            guard case .song(let song)? = item(row) else { continue }
             let renderer = row["playlistPanelVideoRenderer"].exists ? row["playlistPanelVideoRenderer"]
                 : row["playlistPanelVideoWrapperRenderer", "primaryRenderer", "playlistPanelVideoRenderer"]
-            guard renderer.exists else { return nil }
-            return renderer["selected"].bool ?? false
+            if selectedIndex == nil, renderer["selected"].bool == true { selectedIndex = songs.count }
+            songs.append(song)
         }
         let currentVideoId = response["currentVideoEndpoint", "watchEndpoint", "videoId"].text ?? requested.videoId
-        let currentIndex = selected.firstIndex(of: true)
+        let currentIndex = selectedIndex
             ?? currentVideoId.flatMap { id in songs.firstIndex { $0.videoId == id } }
             ?? 0
         let playlistId = panel["playlistId"].text

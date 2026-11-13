@@ -99,8 +99,13 @@ enum JSON: Sendable, Hashable {
 
     /// For a single-key wrapper such as `{"musicShelfRenderer": {...}}`: the key and its value.
     var soleEntry: (key: String, value: JSON)? {
-        guard let object, let first = object.first(where: { $0.key != "trackingParams" }) else { return nil }
-        return (first.key, first.value)
+        // A dictionary has no order of its own. Should a wrapper ever carry two entries, the same one must win every
+        // time: a renderer or view model before anything else, then by name.
+        guard let object else { return nil }
+        let keys = object.keys.filter { $0 != "trackingParams" }.sorted()
+        guard let key = keys.first(where: { $0.hasSuffix("Renderer") || $0.hasSuffix("ViewModel") }) ?? keys.first,
+              let value = object[key] else { return nil }
+        return (key, value)
     }
 
     /// The text of a `{"runs": [...]}` or `{"simpleText": ...}` node, or a plain string.

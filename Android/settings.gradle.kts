@@ -14,3 +14,6 @@ dependencyResolutionManagement {
 }
 rootProject.name = "BoomBoom"
 include(":app")
+include(":innertube")
+include(":logic")
+include(":ui")

@@ -1,0 +1,36 @@
+[package]
+name = "boomcore"
+version = "0.1.0"
+edition = "2024"
+publish = false
+description = "BoomBoom's audio engine for Android: stream parsing, the packet store, decoding, playback and AAudio output"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+# libopus 1.6.1, built from the bundled source with CMake (the reference Opus decoder).
+opusic-sys = "0.7.7"
+# Symphonia's AAC-LC decoder, pure Rust.
+symphonia-core = "0.6.1"
+symphonia-codec-aac = "0.6.1"
+# The windowed-sinc resampler (44.1 kHz AAC to the pipeline's 48 kHz), and the buffer adapters it takes.
+rubato = { version = "5.1.0", default-features = false }
+audioadapter-buffers = "5.2.0"
+# The Java Native Interface.
+jni = "0.22.4"
+
+[build-dependencies]
+# Compiles the shared C (ring, renderer, sound processor) from Packages/BoomEngine/Sources/CBoomAudio.
+cc = "1.11.2"
+
+[profile.release]
+lto = true
+codegen-units = 1
+opt-level = 3
+strip = "debuginfo"
+
+[profile.dev]
+# The tests decode whole songs: keep the dependencies quick even in debug builds.
+[profile.dev.package."*"]
+opt-level = 3

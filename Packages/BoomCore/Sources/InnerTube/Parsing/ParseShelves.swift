@@ -52,9 +52,10 @@ extension Parse {
             chips.append(contentsOf: navigationChips(section))
         }
         if shelves.isEmpty, chips.isEmpty {
-            // Some pages put one grid or shelf straight in the tab content.
-            shelves = shelves + self.shelves(response["contents", "singleColumnBrowseResultsRenderer", "tabs", 0,
-                "tabRenderer", "content"].array)
+            // Some pages put one grid or shelf straight in the tab content. That content is a single object (the
+            // grid or shelf itself), not a list of sections.
+            let content = response["contents", "singleColumnBrowseResultsRenderer", "tabs", 0, "tabRenderer", "content"]
+            if content.exists { shelves = self.shelves([content]) }
         }
         // A page of one list that scrolls on (a library tab) keeps its token on the shelf; screens load more of a
         // page through the page's token, so it is offered there too.

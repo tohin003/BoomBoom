@@ -1,0 +1,4 @@
+# libopus is built from the source bundled with opusic-sys (1.6.1) with CMake. The Android SDK's CMake and Ninja are
+# used when none is on the PATH; the Gradle task and the Mac tests both find them through this.
+[env]
+CMAKE = { value = "/Users/xyx/Library/Android/sdk/cmake/3.22.1/bin/cmake", force = false }
