@@ -1,0 +1,6 @@
+// Signing. Each person's own values (the team of their Apple ID, and an app identifier of their own) are in
+// Config/Local.xcconfig, which install.sh writes and git ignores. With no Local.xcconfig nothing can be signed.
+DEVELOPMENT_TEAM =
+CODE_SIGN_STYLE = Automatic
+BOOM_BUNDLE_ID = io.github.boomboom.app
+#include? "Local.xcconfig"

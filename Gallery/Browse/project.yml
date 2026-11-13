@@ -1,0 +1,57 @@
+# XcodeGen spec for the browse UI demo app. Generate with:  /opt/homebrew/bin/xcodegen generate
+# Shows FeatureBrowse's frame and screens on canned data (PreviewMusicAPI). Launch arguments jump to a screen:
+#   -screen home|explore|library|search|suggest|album|artist|playlist|charts|moods|newreleases|settings
+#   -query "lo"  -id <browse id>  -playing 1  -signedin 0  -fail 1  -selfcheck 1  -slow 1  -scroll <points>
+name: BoomGalleryBrowse
+
+options:
+  bundleIdPrefix: io.github.tohin003
+  deploymentTarget:
+    iOS: "26.0"
+  createIntermediateGroups: true
+
+packages:
+  BoomFeatures:
+    path: ../../Packages/BoomFeatures
+  BoomEngine:
+    path: ../../Packages/BoomEngine
+  BoomCore:
+    path: ../../Packages/BoomCore
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+
+targets:
+  BoomGalleryBrowse:
+    type: application
+    platform: iOS
+    deploymentTarget: "26.0"
+    sources:
+      - path: Sources
+    dependencies:
+      - package: BoomFeatures
+        product: FeatureBrowse
+      - package: BoomFeatures
+        product: BoomDesign
+      - package: BoomEngine
+        product: BoomPlayer
+      - package: BoomCore
+        product: BoomModels
+    settings:
+      base:
+        PRODUCT_NAME: BoomGalleryBrowse
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.tohin003.boomgallery.browse
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
+        INFOPLIST_KEY_CFBundleDisplayName: Browse Gallery
+        INFOPLIST_KEY_UIUserInterfaceStyle: Dark
+        TARGETED_DEVICE_FAMILY: "1"
+        SWIFT_STRICT_CONCURRENCY: complete
+        CODE_SIGN_STYLE: Manual
+        CODE_SIGN_IDENTITY: "-"
+        DEVELOPMENT_TEAM: ""

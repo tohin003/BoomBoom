@@ -1,0 +1,53 @@
+# The player UI worker's demo app: the mini player, the full player and the equaliser on canned data.
+# Generate with:  /opt/homebrew/bin/xcodegen generate   (inside Gallery/Player)
+# Launch straight into a state with  -screen player|queue|lyrics|related|equalizer|mini  (and optionally -start <n>).
+name: PlayerGallery
+
+options:
+  bundleIdPrefix: io.github.tohin003
+  deploymentTarget:
+    iOS: "26.0"
+  developmentLanguage: en
+
+packages:
+  BoomFeatures:
+    path: ../../Packages/BoomFeatures
+  BoomEngine:
+    path: ../../Packages/BoomEngine
+  BoomCore:
+    path: ../../Packages/BoomCore
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+
+targets:
+  PlayerGallery:
+    type: application
+    platform: iOS
+    deploymentTarget: "26.0"
+    sources:
+      - path: Sources
+    dependencies:
+      - package: BoomFeatures
+        product: FeaturePlayer
+      - package: BoomFeatures
+        product: BoomDesign
+      - package: BoomEngine
+        product: BoomPlayer
+      - package: BoomCore
+        product: BoomModels
+    settings:
+      base:
+        PRODUCT_NAME: PlayerGallery
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.tohin003.boomgallery.player
+        GENERATE_INFOPLIST_FILE: YES
+        SWIFT_VERSION: "6.0"
+        SWIFT_STRICT_CONCURRENCY: complete
+        TARGETED_DEVICE_FAMILY: "1"
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        INFOPLIST_KEY_UIStatusBarStyle: UIStatusBarStyleLightContent
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
+        INFOPLIST_KEY_CFBundleDisplayName: Player Gallery
+        CODE_SIGN_STYLE: Automatic

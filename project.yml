@@ -1,0 +1,101 @@
+# XcodeGen spec for BoomBoom. Generate with:  /opt/homebrew/bin/xcodegen generate
+# The app target (App/) is a thin shell over the local Swift packages in Packages/.
+# Signing comes from Config/Base.xcconfig (Personal Team, automatic), which includes the git-ignored Local.xcconfig.
+name: BoomBoom
+
+options:
+  bundleIdPrefix: io.github.tohin003
+  deploymentTarget:
+    iOS: "26.0"
+  developmentLanguage: en
+  createIntermediateGroups: true
+  groupSortPosition: top
+
+configFiles:
+  Debug: Config/Base.xcconfig
+  Release: Config/Base.xcconfig
+
+settings:
+  base:
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    SWIFT_VERSION: "6.0"
+    DEAD_CODE_STRIPPING: YES
+
+packages:
+  BoomCore:
+    path: Packages/BoomCore
+  BoomEngine:
+    path: Packages/BoomEngine
+  BoomFeatures:
+    path: Packages/BoomFeatures
+
+targets:
+  BoomBoom:
+    type: application
+    platform: iOS
+    deploymentTarget: "26.0"
+    sources:
+      - path: App
+        excludes:
+          - Info.plist
+    settings:
+      base:
+        PRODUCT_NAME: BoomBoom
+        PRODUCT_BUNDLE_IDENTIFIER: $(BOOM_BUNDLE_ID)
+        INFOPLIST_FILE: App/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        TARGETED_DEVICE_FAMILY: "1"
+        SUPPORTS_MACCATALYST: NO
+        SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: NO
+        SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD: NO
+        SWIFT_STRICT_CONCURRENCY: complete
+        SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
+        SWIFT_APPROACHABLE_CONCURRENCY: YES
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS: NO
+    dependencies:
+      - package: BoomCore
+        product: BoomModels
+      - package: BoomCore
+        product: InnerTube
+      - package: BoomEngine
+        product: BoomPlayer
+      - package: BoomFeatures
+        product: BoomDesign
+      - package: BoomFeatures
+        product: FeatureBrowse
+      - package: BoomFeatures
+        product: FeaturePlayer
+    scheme:
+      gatherCoverageData: false
+
+  # The real app driven by a finger on the simulator: taps, typing and drags against the live service, always
+  # launched with -BoomSilent 1 so nothing is heard.
+  BoomBoomUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    deploymentTarget: "26.0"
+    sources:
+      - path: UITests
+    dependencies:
+      - target: BoomBoom
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(BOOM_BUNDLE_ID).UITests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: BoomBoom
+        SWIFT_VERSION: "6.0"
+
+schemes:
+  BoomBoomUITests:
+    build:
+      targets:
+        BoomBoom: all
+        BoomBoomUITests: [test]
+    test:
+      config: Debug
+      gatherCoverageData: false
+      targets:
+        - BoomBoomUITests
