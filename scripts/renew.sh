@@ -478,8 +478,10 @@ if [ "$from_tree" -eq 1 ]; then
     fi
   fi
   restore_needed=1
+  # The Android version (/Android/) is not part of the iPhone build, and its build output runs to a gigabyte.
   if ! /usr/bin/rsync -a --delete \
       --exclude /build/ --exclude .build/ --exclude DerivedData/ --exclude .git/ --exclude .DS_Store \
+      --exclude /Android/ \
       --exclude '*.xcodeproj/xcuserdata/' --exclude '*.xcodeproj/project.xcworkspace/xcuserdata/' \
       --exclude "/$SNAPSHOT_MARK" "$ROOT/" "$SNAPSHOT/"; then
     die 73 "could not copy the working tree to $SNAPSHOT."
