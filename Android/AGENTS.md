@@ -61,13 +61,29 @@ Three things were learnt the hard way and must not be undone:
 - A release build is `./gradlew :app:assembleRelease` (shrunk with R8; `app/proguard-rules.pro` keeps what the native
   library and the saved files find by name). It is signed when the release key is on this Mac (outside the
   repository); elsewhere it comes out unsigned.
-- **The emulator** is the AVD `Medium_Phone_API_36.1` (Android 16, arm64, Google Play); `Boom_API_30` is Android 11
-  for the older-phone checks. An emulator takes more than 2 GB, so only one may run at a time, only one worker may
-  have it, and nobody else's simulator may be running. Do not start it unless your task says you may, and shut it
-  down when you are done (`adb emu kill`). Start it without a window **and without sound**, with three cores (with
-  one, its own system apps stop responding and every timing is meaningless):
-  `~/Library/Android/sdk/emulator/emulator -avd Medium_Phone_API_36.1 -no-window -no-audio -no-boot-anim -no-snapshot-save -memory 2048 -cores 3 -gpu swiftshader_indirect`.
+- **The emulator.** None is kept on this Mac: the two that proved version 1.0 (Android 16 with Google Play, the AVD
+  `Medium_Phone_API_36.1`, and Android 11, `Boom_API_30`, for the older-phone checks) were removed with their system
+  images on 14 November 2026 to free 12 GB. To test again, put one back by hand (this Mac has no Android Studio and
+  no `sdkmanager`):
+  1. Find the image in Google's index (`https://dl.google.com/android/repository/sys-img/google_apis_playstore/sys-img2-3.xml`
+     for images with Google Play, `.../sys-img/google_apis/sys-img2-3.xml` for plain ones; Android 11 was
+     `sys-img/google_apis/arm64-v8a-30_r16.zip`). Download the zip and unpack its `arm64-v8a` folder to
+     `~/Library/Android/sdk/system-images/android-<level>/<google_apis_playstore or google_apis>/arm64-v8a`.
+  2. Make the AVD: a folder `~/.android/avd/<name>.avd` holding `config.ini` (the two used are kept in
+     `tools/avd/`), and beside it `~/.android/avd/<name>.ini` with four lines: `avd.ini.encoding=UTF-8`,
+     `path=<the folder's full path>`, `path.rel=avd/<name>.avd`, `target=android-<level>`.
+
+  An emulator takes more than 2 GB of memory, so only one may run at a time, only one worker may have it, and nobody
+  else's simulator may be running. Do not start it unless your task says you may, and shut it down when you are done
+  (`adb emu kill`). Start it without a window **and without sound**, with three cores (with one, its own system apps
+  stop responding and every timing is meaningless):
+  `~/Library/Android/sdk/emulator/emulator -avd <name> -no-window -no-audio -no-boot-anim -no-snapshot-save -memory 2048 -cores 3 -gpu swiftshader_indirect`.
   Give it three or four minutes after it boots before timing anything, and run
   `adb shell settings put global hide_error_dialogs 1` so its own "isn't responding" dialogs do not take your taps.
+- **Tools for the emulator** are in `tools/`: `ui.py` lists, finds and taps what is on screen and takes screenshots;
+  `walk.py` is a random walk that watches for crashes (it never opens the sign-in page and never types);
+  `cdp.mjs` asks the hidden tab a question through the WebView's debugger (debug builds), and `sabrwatch.mjs` prints
+  the kinds of parts in the media answers and the server's pacing (never the audio). Screen dumps are heavy: a walk
+  that dumps too often slows the emulator enough to make songs time out.
 - An iPhone is connected to this Mac. Never touch it. `adb` only sees Android devices, so plain `adb` commands are
   safe; never run `xcrun devicectl` or `xcodebuild` here.
