@@ -41,6 +41,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
@@ -104,6 +105,18 @@ fun SearchScreen(initialQuery: String?, submitsInitialQuery: Boolean) {
             if (submitsInitialQuery) model.submit() else focus.requestFocus()
         } else {
             focus.requestFocus()
+        }
+    }
+
+    // Results are for reading: however the search was started (the keyboard's key, a suggestion, a recent search),
+    // the keyboard goes away and stops covering half of them. Tapping the field brings it back.
+    val keyboard = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
+    val showsResults = model.mode is SearchModel.Mode.Results
+    LaunchedEffect(showsResults) {
+        if (showsResults) {
+            keyboard?.hide()
+            focusManager.clearFocus()
         }
     }
 

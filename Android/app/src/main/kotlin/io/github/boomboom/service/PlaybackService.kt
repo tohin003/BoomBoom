@@ -1,12 +1,13 @@
 package io.github.boomboom.service
 
 import android.app.PendingIntent
-import android.content.Intent
 import androidx.annotation.OptIn
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
-import io.github.boomboom.debug.DebugActivity
+import io.github.boomboom.MainActivity
+import io.github.boomboom.R
 import io.github.boomboom.runtime.BoomApplication
 import io.github.boomboom.runtime.BoomRuntime
 import io.github.boomboom.runtime.BoomTrace
@@ -26,11 +27,21 @@ class PlaybackService : MediaSessionService() {
 
     override fun onCreate() {
         super.onCreate()
-        runtime = (application as BoomApplication).runtime
+        val app = application as BoomApplication
+        if (app.startFailure != null) {
+            // The app cannot run on this phone as it is (see BoomApplication): there is nothing to play.
+            stopSelf()
+            return
+        }
+        runtime = app.runtime
+        // The app's own mark in the status bar and on the notification, in place of Media3's stand-in.
+        setMediaNotificationProvider(
+            DefaultMediaNotificationProvider.Builder(this).build().also { it.setSmallIcon(R.drawable.ic_stat_boom) },
+        )
         val player = StorePlayer(runtime.player, runtime.scope)
+        // A tap on the notification opens the app on the full player.
         val open = PendingIntent.getActivity(
-            this, 0,
-            Intent(this, DebugActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
+            this, 0, MainActivity.playerIntent(this),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
         val made = MediaSession.Builder(this, player).setSessionActivity(open).build()
@@ -51,19 +62,22 @@ class PlaybackService : MediaSessionService() {
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = session
 
     override fun onUpdateNotification(session: MediaSession, startInForegroundRequired: Boolean) {
+        if (!::runtime.isInitialized) return
         val fetching = runtime.broker.isFetching && session.player.mediaItemCount > 0
         super.onUpdateNotification(session, startInForegroundRequired || fetching)
     }
 
     override fun onDestroy() {
-        BoomTrace.note("playback service destroyed")
-        runtime.onFetchingChange = null
-        session?.run {
-            player.release()
-            release()
+        if (::runtime.isInitialized) {
+            BoomTrace.note("playback service destroyed")
+            runtime.onFetchingChange = null
+            session?.run {
+                player.release()
+                release()
+            }
+            session = null
+            runtime.serviceStopped()
         }
-        session = null
-        runtime.serviceStopped()
         super.onDestroy()
     }
 }

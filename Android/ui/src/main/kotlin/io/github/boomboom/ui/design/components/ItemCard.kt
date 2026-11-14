@@ -41,6 +41,7 @@ fun cardWidth(item: MusicItem, cover: Dp = BoomMetrics.cardCover): Dp =
  * A tap follows [ItemActions.tap]; a long press shows the item's menu.
  *
  * @param cover The cover's height (and width for square items).
+ * @param menuExtras Entries added to the item's menu after the usual ones.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -49,6 +50,7 @@ fun ItemCard(
     modifier: Modifier = Modifier,
     cover: Dp = BoomMetrics.cardCover,
     context: PlayContext = PlayContext.Single,
+    menuExtras: List<MenuExtra> = emptyList(),
 ) {
     val actions = rememberItemActions()
     val player by actions.services.player.state.collectAsState()
@@ -114,5 +116,5 @@ fun ItemCard(
             }
         }
     }
-    if (isMenuOpen) ItemMenuSheet(item, onDismiss = { isMenuOpen = false }, likeOverride = likeOverride)
+    if (isMenuOpen) ItemMenuSheet(item, onDismiss = { isMenuOpen = false }, likeOverride = likeOverride, extras = menuExtras)
 }

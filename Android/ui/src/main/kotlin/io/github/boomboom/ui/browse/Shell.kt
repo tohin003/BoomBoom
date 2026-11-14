@@ -53,12 +53,17 @@ import io.github.boomboom.models.BrowseEndpoint
 import io.github.boomboom.ui.browse.collections.AlbumScreen
 import io.github.boomboom.ui.browse.collections.ArtistScreen
 import io.github.boomboom.ui.browse.collections.PlaylistScreen
+import io.github.boomboom.ui.browse.downloads.DownloadedCollectionScreen
+import io.github.boomboom.ui.browse.downloads.DownloadsScreen
 import io.github.boomboom.ui.browse.explore.ExploreScreen
 import io.github.boomboom.ui.browse.explore.MoodsScreen
 import io.github.boomboom.ui.browse.home.HomeScreen
+import io.github.boomboom.ui.browse.library.HistoryScreen
+import io.github.boomboom.ui.browse.library.LibraryScreen
 import io.github.boomboom.ui.browse.pages.BrowsePageModel
 import io.github.boomboom.ui.browse.pages.BrowseScreen
 import io.github.boomboom.ui.browse.search.SearchScreen
+import io.github.boomboom.ui.browse.settings.SettingsScreen
 import io.github.boomboom.ui.design.BoomColor
 import io.github.boomboom.ui.design.BoomMetrics
 import io.github.boomboom.ui.design.LocalAppServices
@@ -131,7 +136,7 @@ private fun RouteScreen(route: BrowseRoute) {
         is BrowseRoute.Root -> when (route.tab) {
             BrowseTab.HOME -> HomeScreen()
             BrowseTab.EXPLORE -> ExploreScreen()
-            BrowseTab.LIBRARY -> ComingScreen("Library", showsBack = false)
+            BrowseTab.LIBRARY -> LibraryScreen()
         }
         is BrowseRoute.Page -> {
             val endpoint = route.endpoint
@@ -146,9 +151,10 @@ private fun RouteScreen(route: BrowseRoute) {
         is BrowseRoute.Search -> SearchScreen(route.query, route.submitted)
         BrowseRoute.Charts -> BrowseScreen(BrowsePageModel.Source.Charts(null))
         BrowseRoute.Moods -> MoodsScreen()
-        BrowseRoute.Settings -> ComingScreen("Settings", showsBack = true)
-        BrowseRoute.Downloads -> ComingScreen("Downloads", showsBack = true)
-        is BrowseRoute.DownloadedCollection -> ComingScreen("Downloads", showsBack = true)
+        BrowseRoute.Settings -> SettingsScreen()
+        BrowseRoute.History -> HistoryScreen()
+        BrowseRoute.Downloads -> DownloadsScreen()
+        is BrowseRoute.DownloadedCollection -> DownloadedCollectionScreen(route.id)
     }
 }
 

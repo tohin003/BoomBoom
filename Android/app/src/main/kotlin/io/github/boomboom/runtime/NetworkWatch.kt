@@ -21,8 +21,15 @@ class NetworkWatch(context: Context) {
 
     var onChange: (() -> Unit)? = null
 
+    /** Called when the phone gets a network to use (also once at the start, if it has one). */
+    var onAvailable: (() -> Unit)? = null
+
     init {
         connectivity.registerDefaultNetworkCallback(object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: Network) {
+                main.post { onAvailable?.invoke() }
+            }
+
             override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) {
                 val metered = computeMetered(capabilities)
                 main.post { update(metered) }

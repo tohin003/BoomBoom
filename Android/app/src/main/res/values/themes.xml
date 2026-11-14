@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The window before the first screen is drawn: the app's own near-black, so nothing flashes at launch. -->
+    <color name="boom_background">#030303</color>
+
+    <style name="Theme.BoomBoom" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/boom_background</item>
+        <item name="android:colorBackground">@color/boom_background</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+</resources>

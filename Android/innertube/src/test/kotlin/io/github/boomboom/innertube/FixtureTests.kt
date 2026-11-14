@@ -11,6 +11,7 @@ import io.github.boomboom.models.Shelf
 import io.github.boomboom.models.Song
 import io.github.boomboom.models.SuggestedQuery
 import io.github.boomboom.models.WatchEndpoint
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.CsvSource
@@ -93,6 +94,58 @@ class SearchFixtureTests {
             ),
             suggestions,
         )
+    }
+
+    @Test
+    fun songsUnderAnArtistCardAreThatArtists() {
+        fun row(title: String, videoId: String, vararg line: JsonElement) = obj(
+            "musicResponsiveListItemRenderer" to obj(
+                "flexColumns" to arr(
+                    obj(
+                        "musicResponsiveListItemFlexColumnRenderer" to obj(
+                            "text" to obj(
+                                "runs" to arr(
+                                    obj("text" to title, "navigationEndpoint" to obj("watchEndpoint" to obj("videoId" to videoId))),
+                                ),
+                            ),
+                        ),
+                    ),
+                    obj("musicResponsiveListItemFlexColumnRenderer" to obj("text" to obj("runs" to arr(*line)))),
+                ),
+                "playlistItemData" to obj("videoId" to videoId),
+            ),
+        )
+        fun artistLink(name: String, id: String) = obj(
+            "text" to name,
+            "navigationEndpoint" to obj(
+                "browseEndpoint" to obj(
+                    "browseId" to id,
+                    "browseEndpointContextSupportedConfigs" to obj(
+                        "browseEndpointContextMusicConfig" to obj("pageType" to "MUSIC_PAGE_TYPE_ARTIST"),
+                    ),
+                ),
+            ),
+        )
+        val card = obj(
+            "title" to obj("runs" to arr(artistLink("The Example Band", "UCexampleband"))),
+            "subtitle" to obj("runs" to arr(obj("text" to "Artist"), obj("text" to " \u2022 "), obj("text" to "1M monthly audience"))),
+            "contents" to arr(
+                // The service leaves the artist out of these lines: the card says whose they are.
+                row("First Song", "aaaaaaaaaaa", obj("text" to "Song"), obj("text" to " \u2022 "), obj("text" to "3:05")),
+                row(
+                    "Second Song", "bbbbbbbbbbb", obj("text" to "Song"), obj("text" to " \u2022 "),
+                    artistLink("Somebody Else", "UCsomebodyelse"), obj("text" to " \u2022 "), obj("text" to "4:10"),
+                ),
+            ),
+        )
+        val shelf = assertNotNull(Parse.topResultShelf(card, 0))
+        assertEquals(3, shelf.items.size)
+        assertEquals("UCexampleband", shelf.items[0].asArtist?.id)
+        val first = assertNotNull(shelf.items[1].asSong)
+        assertEquals(listOf(ArtistRef("The Example Band", "UCexampleband")), first.artists)
+        assertEquals(185.0, first.duration)
+        val second = assertNotNull(shelf.items[2].asSong)
+        assertEquals(listOf(ArtistRef("Somebody Else", "UCsomebodyelse")), second.artists)
     }
 
     @Test

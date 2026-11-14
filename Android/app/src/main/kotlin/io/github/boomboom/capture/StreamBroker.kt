@@ -127,6 +127,9 @@ class StreamBroker(
         /** The song's own page has been opened once for this job; it is not tried twice. */
         var hasOpenedPage = false
 
+        /** The tab had failed to load when this job needed it, and was loaded again for it once. */
+        var hasReloadedTab = false
+
         /** How far the job has gone in getting a stalled fetch moving again. */
         var recovery = Recovery.NONE
 
@@ -480,7 +483,17 @@ class StreamBroker(
         val now = now()
         when (val phase = job.phase) {
             is Phase.WaitingForTab -> when (val tab = browser.phase) {
-                is TabPhase.Failed -> fail(job, tab.message)
+                is TabPhase.Failed ->
+                    // The tab's last load failed, perhaps long ago and for a reason that has passed (no signal in a
+                    // lift, the network not up yet after the phone started). The song gets one fresh load of the tab
+                    // before it is given up on; with no connection that load fails at once.
+                    if (job.hasReloadedTab) {
+                        fail(job, tab.message)
+                    } else {
+                        job.hasReloadedTab = true
+                        BoomTrace.note("capture loads the failed tab again for ${job.captured.videoId}")
+                        browser.reload()
+                    }
                 is TabPhase.Loaded ->
                     if (tab.hasPlayer) {
                         request(job)

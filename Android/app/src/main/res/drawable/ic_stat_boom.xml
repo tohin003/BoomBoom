@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The mark for the status bar and the playback notification: the play mark between its two brackets, in one
+     colour and without the disc (the system draws these icons as a silhouette). The same geometry as the app's mark
+     (ui/src/main/res/drawable/boom_mark.xml), drawn larger in its box. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="72"
+    android:viewportHeight="72">
+    <group
+        android:translateX="-14"
+        android:translateY="-14">
+        <path
+            android:pathData="M70.527,26.717 A31.04,31.04 0 0,1 70.527,73.283"
+            android:strokeColor="#FFFFFFFF"
+            android:strokeLineCap="round"
+            android:strokeWidth="5.5" />
+        <path
+            android:pathData="M29.473,73.283 A31.04,31.04 0 0,1 29.473,26.717"
+            android:strokeColor="#FFFFFFFF"
+            android:strokeLineCap="round"
+            android:strokeWidth="5.5" />
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M66.611,48.11 A2.183,2.183 0 0,1 66.611,51.89 L46.969,63.23 A2.183,2.183 0 0,1 43.695,61.34 L43.695,38.66 A2.183,2.183 0 0,1 46.969,36.77 Z" />
+    </group>
+</vector>

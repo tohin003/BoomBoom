@@ -88,16 +88,31 @@ private sealed class MenuPage {
     data class Artists(val artists: List<ArtistRef>) : MenuPage()
 }
 
+/** An entry a screen adds after an item's usual ones ("Edit" and "Delete" on a playlist of the listener's own). */
+data class MenuExtra(
+    val title: String,
+    val icon: ImageVector,
+    val tag: String,
+    val isDestructive: Boolean = false,
+    val action: () -> Unit,
+)
+
 /**
  * An item's menu as a bottom sheet: Play next, Add to queue, Start radio; Save to playlist, Like, Download; Go to
  * album, Go to artist, Share. Shown by the row's or card's own "more" button or long press, which owns its open
  * state.
  *
  * @param likeOverride Where a row keeps a rating made from this menu, so the next opening shows it.
+ * @param extras Entries the screen adds after the usual ones, below a line.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ItemMenuSheet(item: MusicItem, onDismiss: () -> Unit, likeOverride: MutableState<LikeStatus?>? = null) {
+fun ItemMenuSheet(
+    item: MusicItem,
+    onDismiss: () -> Unit,
+    likeOverride: MutableState<LikeStatus?>? = null,
+    extras: List<MenuExtra> = emptyList(),
+) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
     var page by remember { mutableStateOf<MenuPage>(MenuPage.Entries) }
@@ -124,7 +139,18 @@ fun ItemMenuSheet(item: MusicItem, onDismiss: () -> Unit, likeOverride: MutableS
             MenuHeader(item)
             HorizontalDivider(color = BoomColor.separator, modifier = Modifier.padding(vertical = 4.dp))
             when (val shown = page) {
-                MenuPage.Entries -> MenuEntries(item, likeOverride, act) { page = MenuPage.Artists(it) }
+                MenuPage.Entries -> {
+                    MenuEntries(item, likeOverride, act) { page = MenuPage.Artists(it) }
+                    if (extras.isNotEmpty()) {
+                        HorizontalDivider(color = BoomColor.separator, modifier = Modifier.padding(vertical = 4.dp))
+                        for (extra in extras) {
+                            MenuEntry(
+                                extra.title, extra.icon, extra.tag,
+                                tint = if (extra.isDestructive) BoomColor.destructive else BoomColor.textPrimary,
+                            ) { act(extra.action) }
+                        }
+                    }
+                }
                 is MenuPage.Artists -> {
                     MenuEntry("Back", Icons.AutoMirrored.Filled.ArrowBack, "menu.back") { page = MenuPage.Entries }
                     val navigator = LocalBoomNavigator.current

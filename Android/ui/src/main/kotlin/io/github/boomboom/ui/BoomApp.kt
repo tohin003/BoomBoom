@@ -34,6 +34,7 @@ import io.github.boomboom.ui.design.LocalAppServices
 import io.github.boomboom.ui.design.LocalBoomNavigator
 import io.github.boomboom.ui.design.LocalDownloadCollector
 import io.github.boomboom.ui.design.LocalSettingsStore
+import io.github.boomboom.ui.design.LocalNetworkReturns
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
 
@@ -52,6 +53,13 @@ class BoomAppController {
     fun open(endpoint: BrowseEndpoint) {
         pendingPage = endpoint
     }
+
+    internal var pendingSave by mutableStateOf<List<Song>?>(null)
+
+    /** Shows "Save to playlist" for these songs (or the sign-in, when nobody is signed in), over whatever is open. */
+    fun saveToPlaylist(songs: List<Song>) {
+        pendingSave = songs
+    }
 }
 
 /** The sheets the frame shows over any screen. Only one shows at a time, so one value says which. */
@@ -69,6 +77,9 @@ private sealed class AppSheet {
  * @param onSignIn Shows the sign-in for a browser profile: null for the active one, or the id of a new profile made
  *   for another account (from [io.github.boomboom.logic.SessionStore.beginAddingAccount]).
  * @param onWillOpen Called before a page opens, so the app can close the full player first.
+ * @param onReportProblem Shares the app's own record of what it did, for Settings' "Report a problem".
+ * @param networkReturns How many times the phone got its connection back; a page that failed to load tries again
+ *   when it changes.
  * @param settings Where the screens keep their own small saved values (recent searches).
  * @param workContext Added to every coroutine the screens start; tests pass a test dispatcher so that waiting is
  *   virtual.
@@ -83,6 +94,8 @@ fun BoomApp(
     start: BrowseStart = BrowseStart.Tab(BrowseTab.HOME),
     controller: BoomAppController = remember { BoomAppController() },
     onWillOpen: () -> Unit = {},
+    onReportProblem: () -> Unit = {},
+    networkReturns: Int = 0,
     settings: KeyValueStore = remember { InMemoryKeyValueStore() },
     workContext: CoroutineContext = EmptyCoroutineContext,
 ) {
@@ -104,6 +117,7 @@ fun BoomApp(
             },
             signIn = { onSignIn(null) },
             addAccount = { services.session.beginAddingAccount()?.let(onSignIn) },
+            reportProblem = { onReportProblem() },
         )
     }
 
@@ -116,6 +130,15 @@ fun BoomApp(
         }
     }
 
+    // "Save to playlist" asked for from outside the frame (the full player's menu).
+    val pendingSave = controller.pendingSave
+    LaunchedEffect(pendingSave) {
+        if (pendingSave != null) {
+            controller.pendingSave = null
+            navigator.addToPlaylist(pendingSave)
+        }
+    }
+
     BoomTheme {
         CompositionLocalProvider(
             LocalAppServices provides services,
@@ -123,6 +146,7 @@ fun BoomApp(
             LocalAppScope provides scope,
             LocalDownloadCollector provides collector,
             LocalSettingsStore provides settings,
+            LocalNetworkReturns provides networkReturns,
         ) {
             BrowseShell(router, playerBar, modifier)
             when (val shown = sheet) {

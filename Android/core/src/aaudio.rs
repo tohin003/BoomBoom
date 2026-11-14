@@ -35,6 +35,8 @@ const AAUDIO_SHARING_MODE_SHARED: i32 = 1;
 const AAUDIO_PERFORMANCE_MODE_POWER_SAVING: i32 = 11;
 const AAUDIO_USAGE_MEDIA: i32 = 1;
 const AAUDIO_CONTENT_TYPE_MUSIC: i32 = 2;
+const AAUDIO_STREAM_STATE_STARTING: i32 = 3;
+const AAUDIO_STREAM_STATE_STARTED: i32 = 4;
 const AAUDIO_CALLBACK_RESULT_CONTINUE: i32 = 0;
 const AAUDIO_CALLBACK_RESULT_STOP: i32 = 1;
 /// Android 14's sample-rate conversion quality setting: the best the system has, should it convert.
@@ -61,6 +63,7 @@ unsafe extern "C" {
     fn AAudioStream_getFramesPerBurst(stream: *mut AAudioStream) -> i32;
     fn AAudioStream_getBufferSizeInFrames(stream: *mut AAudioStream) -> i32;
     fn AAudioStream_getXRunCount(stream: *mut AAudioStream) -> i32;
+    fn AAudioStream_getState(stream: *mut AAudioStream) -> i32;
     fn AAudio_convertResultToText(result: i32) -> *const c_char;
 
     fn dlopen(name: *const c_char, flags: i32) -> *mut c_void;
@@ -256,6 +259,11 @@ impl AudioOutput {
             control.stream = self.shared.open(&mut control);
         }
         let Some(stream) = &control.stream else { return false };
+        // Already running (asked for twice): that is what was wanted, and a second request would be refused.
+        let state = unsafe { AAudioStream_getState(stream.0) };
+        if state == AAUDIO_STREAM_STATE_STARTING || state == AAUDIO_STREAM_STATE_STARTED {
+            return true;
+        }
         let result = unsafe { AAudioStream_requestStart(stream.0) };
         if result != AAUDIO_OK {
             log(&format!("output: start refused ({})", result_text(result)));
@@ -401,13 +409,36 @@ fn keep(shared: Arc<Shared>, signal: Arc<Signal>) {
         }
         // The new route may run at another rate: learn it again.
         control.native_rate = 0;
-        if control.wants_running {
-            control.stream = shared.open(&mut control);
-            if let Some(stream) = &control.stream {
+        control.reopens += 1;
+        // In the moment a route changes (headphones connecting over Bluetooth) the new device may not take a stream
+        // yet: try again for a few seconds rather than fall silent until the listener presses play.
+        let mut tries = 0u64;
+        while control.wants_running && control.stream.is_none() {
+            if let Some(stream) = shared.open(&mut control) {
                 let result = unsafe { AAudioStream_requestStart(stream.0) };
                 log(&format!("output: reopened on the new route ({})", result_text(result)));
+                if result == AAUDIO_OK {
+                    control.stream = Some(stream);
+                    break;
+                }
+                unsafe { AAudioStream_close(stream.0) };
             }
+            tries += 1;
+            if tries >= REOPEN_TRIES {
+                log("output: the new route did not take a stream; the player opens one when it next looks");
+                break;
+            }
+            drop(control);
+            std::thread::sleep(std::time::Duration::from_millis(200 * tries));
+            if *signal.request.lock().unwrap_or_else(|p| p.into_inner()) == Request::Quit {
+                return;
+            }
+            control = shared.lock();
+            // The rate learnt on a failed try says nothing about the next.
+            control.native_rate = 0;
         }
-        control.reopens += 1;
     }
 }
+
+/// How often the keeper tries to open a stream on a new route (over about seven seconds) before leaving it be.
+const REOPEN_TRIES: u64 = 8;

@@ -1,8 +1,17 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     // The debug screen is Compose; the compiler plugin ships with Kotlin and must match its version.
     id("org.jetbrains.kotlin.plugin.compose") version "2.2.0"
+}
+
+// The key the released app is signed with lives outside the repository, on the Mac that makes releases. Without it
+// a release build comes out unsigned (and a debug build is unaffected).
+val signing = Properties().apply {
+    val file = File(System.getProperty("user.home"), ".config/boomboom/keystore.properties")
+    if (file.isFile) file.inputStream().use { load(it) }
 }
 
 android {
@@ -13,11 +22,44 @@ android {
 
     defaultConfig {
         applicationId = "io.github.boomboom.android"
-        minSdk = 26
+        // Android 8.1: the first whose own audio path (AAudio) is dependable; on 8.0 it was not.
+        minSdk = 27
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        // The on-device tests drive the engine themselves, in a process without the app's own player (BareRunner).
+        testInstrumentationRunner = "io.github.boomboom.BareRunner"
+        // Only the processors the engine is built for: a library of some other kind (a dependency brings one for
+        // 32-bit x86) must not make a phone think the whole app runs on it.
+        ndk {
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64")
+        }
+    }
+
+    signingConfigs {
+        if (signing.containsKey("storeFile")) {
+            create("release") {
+                storeFile = file(signing.getProperty("storeFile"))
+                storePassword = signing.getProperty("storePassword")
+                keyAlias = signing.getProperty("keyAlias")
+                keyPassword = signing.getProperty("keyPassword")
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            // Shrunk and optimised: a third of the size, and the screens draw noticeably faster.
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfig = signingConfigs.findByName("release")
+        }
+    }
+
+    // The release build's own lint pass needs more memory than this project's builds are given.
+    lint {
+        checkReleaseBuilds = false
     }
 
     compileOptions {
@@ -45,17 +87,21 @@ android {
 }
 
 dependencies {
+    implementation(project(":ui"))
     implementation(project(":logic"))
     implementation(project(":innertube"))
     implementation("androidx.webkit:webkit:1.14.0")
+    // FileProvider, for sharing a problem report.
+    implementation("androidx.core:core-ktx:1.16.0")
     // The stores run on the main thread through Dispatchers.Main.
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
     // The playback service: the session the system draws the notification and lock-screen controls from.
     implementation("androidx.media3:media3-session:1.8.0")
     implementation("androidx.media3:media3-common:1.8.0")
-    // The debug screen.
+    // The window that holds the screens (and, in debug builds, the plain test screen).
     implementation(platform("androidx.compose:compose-bom:2025.08.00"))
     implementation("androidx.compose.ui:ui")
+    implementation("androidx.compose.foundation:foundation")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.activity:activity-compose:1.10.1")
 

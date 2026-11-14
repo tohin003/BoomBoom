@@ -14,12 +14,12 @@ import java.util.Locale
 /**
  * For checking the engine from the command line, like the iPhone app's launch arguments:
  *
- *     adb shell am start -n io.github.boomboom.android/io.github.boomboom.debug.DebugActivity \
+ *     adb shell am start -n io.github.boomboom.android/io.github.boomboom.MainActivity \
  *         --es BoomPlay <videoId> --ez BoomTrace true
  *
  *   `BoomPlay <videoId>`    plays that song as soon as the app is up (with its radio queue)
  *   `BoomSeek <seconds>`    jumps in the current song
- *   `BoomCommand <c>`       next, previous, play or pause
+ *   `BoomCommand <c>`       next, previous, play, pause, or crashTab (kills the hidden tab's renderer)
  *   `BoomTrace true`        logs one `BOOM t=… status=… pos=… buffered=… format=… tab=…` line a second
  *   `BoomEval64 <base64>`   evaluates that JavaScript expression in the hidden tab every ten seconds, from
  *                           `BoomEvalAfter` seconds on (12 by default), and logs the answer ("BOOM eval")
@@ -46,6 +46,8 @@ object Diagnostics {
             "previous" -> runtime.player.previous()
             "play" -> runtime.player.resume()
             "pause" -> runtime.player.pause()
+            // Kills the hidden tab's renderer, as the system does when memory is short: the tab must come back.
+            "crashTab" -> runtime.browser.webView.loadUrl("chrome://crash")
             null -> Unit
             else -> BoomTrace.note("diagnostics: unknown command")
         }

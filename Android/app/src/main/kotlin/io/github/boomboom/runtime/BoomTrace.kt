@@ -41,6 +41,40 @@ object BoomTrace {
         writer.execute { write(String.format(Locale.ROOT, "%s +%.1f %s\n", stamp(now), elapsed, text)) }
     }
 
+    /**
+     * The app is about to die of an error nobody caught: its last words go into the file before it does, written
+     * here and now (the writer thread may never get another turn).
+     */
+    fun crash(thread: Thread, failure: Throwable) {
+        val target = file ?: return
+        try {
+            val text = StringBuilder("${stamp(System.currentTimeMillis())} CRASH on ${thread.name}: $failure\n")
+            var cause: Throwable? = failure
+            var depth = 0
+            while (cause != null && depth < 4) {
+                if (depth > 0) text.append("caused by: $cause\n")
+                for (frame in cause.stackTrace.take(24)) text.append("    at $frame\n")
+                cause = cause.cause
+                depth += 1
+            }
+            FileOutputStream(target, true).use { it.write(text.toString().toByteArray()) }
+        } catch (failure: java.io.IOException) {
+            // Nothing more can be done for it.
+        }
+    }
+
+    /** The record so far, for a problem report. Null when there is none. */
+    fun read(): String? {
+        val target = file ?: return null
+        return try {
+            // What the writer still holds is let through first.
+            writer.submit {}.get(2, java.util.concurrent.TimeUnit.SECONDS)
+            if (target.isFile) target.readText() else null
+        } catch (failure: Exception) {
+            null
+        }
+    }
+
     /** A line for logcat only (the once-a-second diagnostics line), not kept in the file. */
     fun console(text: String) {
         Log.i(TAG, text)

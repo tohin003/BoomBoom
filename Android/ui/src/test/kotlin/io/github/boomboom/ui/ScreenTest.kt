@@ -66,7 +66,8 @@ abstract class ScreenTest {
     /** Where the screens' and stores' coroutines run. Unconfined: work starts at once, and waits only on [scheduler]. */
     open val dispatcher: TestDispatcher by lazy { UnconfinedTestDispatcher(scheduler) }
 
-    private val storeScope by lazy { CoroutineScope(SupervisorJob() + dispatcher) }
+    /** Where the stores run; cancelled after each test. */
+    val storeScope by lazy { CoroutineScope(SupervisorJob() + dispatcher) }
 
     val controller = BoomAppController()
 
@@ -97,11 +98,17 @@ abstract class ScreenTest {
         compose.waitForIdle()
     }
 
-    fun showApp(services: AppServices, start: BrowseStart = BrowseStart.Tab(BrowseTab.HOME), onSignIn: (String?) -> Unit = {}) {
+    fun showApp(
+        services: AppServices,
+        start: BrowseStart = BrowseStart.Tab(BrowseTab.HOME),
+        onSignIn: (String?) -> Unit = {},
+        onOpenEqualizer: () -> Unit = {},
+        onReportProblem: () -> Unit = {},
+    ) {
         compose.setContent {
             BoomApp(
-                services, playerBar = { StandInPlayerBar(services) }, onOpenEqualizer = {}, onSignIn = onSignIn,
-                start = start, controller = controller, workContext = dispatcher,
+                services, playerBar = { StandInPlayerBar(services) }, onOpenEqualizer = onOpenEqualizer, onSignIn = onSignIn,
+                start = start, controller = controller, onReportProblem = onReportProblem, workContext = dispatcher,
             )
         }
         compose.waitForIdle()

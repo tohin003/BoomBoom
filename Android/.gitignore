@@ -6,3 +6,4 @@ local.properties
 keystore.properties
 core/target/
 app/src/main/jniLibs/
+dist/

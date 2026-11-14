@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -60,9 +61,13 @@ import io.github.boomboom.ui.design.LocalAppServices
 import io.github.boomboom.ui.design.LocalBoomNavigator
 import kotlinx.coroutines.launch
 
-/** The bar at the top of a tab's root: the brand (or a title), search, and the account button. */
+/**
+ * The bar at the top of a tab's root: the brand (or a title), search, and the account button.
+ *
+ * @param actions Buttons before search (Library's History).
+ */
 @Composable
-fun TopBar(title: String? = null) {
+fun TopBar(title: String? = null, actions: @Composable RowScope.() -> Unit = {}) {
     val router = LocalShellRouter.current
     Row(
         Modifier
@@ -79,6 +84,7 @@ fun TopBar(title: String? = null) {
             BrandMark()
         }
         Spacer(Modifier.weight(1f))
+        actions()
         BarIconButton(
             Icons.Outlined.Search, "Search", { router.push(BrowseRoute.Search(null)) },
             Modifier.testTag("topbar.search"),
@@ -87,7 +93,10 @@ fun TopBar(title: String? = null) {
     }
 }
 
-/** Signed in, a menu: the accounts (another one's tap switches to it), adding one, and Settings. Signed out, sign in. */
+/**
+ * A menu for everyone: the accounts (another one's tap switches to it), signing in, adding an account, and Settings.
+ * Settings must be within reach signed out too: the sound, the cache and the downloads need no account.
+ */
 @Composable
 private fun AccountButton() {
     val services = LocalAppServices.current
@@ -96,10 +105,7 @@ private fun AccountButton() {
     val appScope = LocalAppScope.current
     val session by services.session.state.collectAsState()
     var isOpen by remember { mutableStateOf(false) }
-    if (!session.isSignedIn && session.accounts.isEmpty()) {
-        BarIconButton(Icons.Outlined.AccountCircle, "Sign in", { navigator.signIn() }, Modifier.testTag("topbar.signIn"), iconSize = 28.dp)
-        return
-    }
+    val hasAccounts = session.isSignedIn || session.accounts.isNotEmpty()
     Box {
         val account = session.account
         Box(
@@ -114,7 +120,11 @@ private fun AccountButton() {
             if (account != null) {
                 ArtworkView(account.artwork, width = 30.dp, isCircle = true)
             } else {
-                Icon(Icons.Filled.AccountCircle, null, tint = BoomColor.textPrimary, modifier = Modifier.size(28.dp))
+                // Filled once an account is known, an outline while nobody is signed in.
+                Icon(
+                    if (hasAccounts) Icons.Filled.AccountCircle else Icons.Outlined.AccountCircle, null,
+                    tint = BoomColor.textPrimary, modifier = Modifier.size(28.dp),
+                )
             }
         }
         DropdownMenu(
@@ -144,10 +154,10 @@ private fun AccountButton() {
             if (!session.isSignedIn) {
                 DropdownMenuItem(
                     text = { Text("Sign in") }, leadingIcon = { Icon(Icons.Outlined.AccountCircle, null) },
-                    onClick = { isOpen = false; navigator.signIn() },
+                    onClick = { isOpen = false; navigator.signIn() }, modifier = Modifier.testTag("account.signIn"),
                 )
             }
-            if (session.canAddAccount) {
+            if (session.canAddAccount && hasAccounts) {
                 DropdownMenuItem(
                     text = { Text("Add another account") }, leadingIcon = { Icon(Icons.Outlined.PersonAdd, null) },
                     onClick = { isOpen = false; navigator.addAccount() }, modifier = Modifier.testTag("account.add"),

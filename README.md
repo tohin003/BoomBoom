@@ -30,8 +30,11 @@ low-bitrate stream. The player's details line shows what is really being played,
 
 `AGENTS.md` has the layout, ownership and rules for anyone (or any agent) working in the repository.
 
-`Android/` holds the start of an Android version (same page script and sound processor, a Rust engine core, Kotlin
-screens). It is not usable yet.
+`Android/` holds the Android version: the same page script and the same sound processor (the C in
+`CBoomAudio`, compiled in place), a Rust engine core, Kotlin stores and data client, and Jetpack Compose screens.
+The hidden tab is an Android WebView. It is shared as an APK file: **download `BoomBoom.apk` from the
+[releases page](https://github.com/tohin003/BoomBoom/releases) and install it by following
+[Android/INSTALL.md](Android/INSTALL.md)**. `Android/AGENTS.md` describes its parts and how to build it.
 
 ## Building and testing
 

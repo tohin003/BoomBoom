@@ -407,7 +407,28 @@ class LiveEngine(
                 delay(1000)
                 val current = current ?: return@launch
                 broker.setPlayhead(Engine.position, current.song.videoId)
+                watchOutput()
             }
+        }
+    }
+
+    private var notedReopens = 0L
+
+    /**
+     * The engine opens its output again by itself when the sound moves to another device (headphones plugged in or
+     * pulled out, Bluetooth). That is noted here for a problem report; and should the new device not have taken a
+     * stream in time, one is asked for again, so music wanted playing does not stay silent.
+     */
+    private fun watchOutput() {
+        if (!isOutputRunning) return
+        val output = Engine.outputInfo
+        if (output.reopens != notedReopens) {
+            notedReopens = output.reopens
+            BoomTrace.note("audio output moved to another device (${output.nativeRate} Hz, opened ${output.reopens} times since)")
+        }
+        if (wantsPlay && !output.running) {
+            BoomTrace.note("audio output was lost: opening it again")
+            isOutputRunning = Engine.startOutput()
         }
     }
 

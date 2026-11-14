@@ -24,6 +24,11 @@ data class BoomNavigator(
     val signIn: () -> Unit = {},
     /** Shows the sign-in for another account, kept apart from the ones already signed in. */
     val addAccount: () -> Unit = {},
+    /**
+     * Lets the listener send the app's own record of what it did (times, states, formats; nothing personal) to
+     * whoever gave them the app, through the phone's share sheet. For Settings' "Report a problem".
+     */
+    val reportProblem: () -> Unit = {},
 )
 
 /** The app's stores and data source. Every screen reads it; the frame provides it. */

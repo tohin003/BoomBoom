@@ -22,6 +22,7 @@ import io.github.boomboom.web.WebSessionProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -46,6 +47,9 @@ class BoomRuntime(private val context: Context) {
     val api = InnerTubeClient(WebSessionProvider(browser))
     val services: AppServices
     val player: PlayerStore get() = services.player
+
+    /** Counts each time the phone gets a network to use: pages that failed to load try again when it changes. */
+    val networkReturns = MutableStateFlow(0)
 
     /** Called when what the playback service shows may have changed (a fetch started or ended). */
     var onFetchingChange: (() -> Unit)? = null
@@ -73,6 +77,10 @@ class BoomRuntime(private val context: Context) {
             downloads = DownloadStore(engine, storage, scope, downloads.indexFile),
         )
         broker.onFetchingChange = { fetchingChanged() }
+        network.onAvailable = {
+            browser.networkBecameAvailable()
+            networkReturns.value += 1
+        }
 
         // The service is started with the first song, while the app is in front; from then on it keeps itself in the
         // foreground while music plays.
@@ -92,6 +100,7 @@ class BoomRuntime(private val context: Context) {
      */
     @SuppressLint("WakelockTimeout")
     private fun fetchingChanged() {
+        browser.isBusy = broker.isFetching
         if (broker.isFetching) {
             fetchWake.acquire(10 * 60 * 1000L)
             fetchWifi.acquire()

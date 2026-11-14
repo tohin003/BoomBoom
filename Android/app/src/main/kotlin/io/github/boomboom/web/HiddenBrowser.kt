@@ -4,9 +4,11 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.net.Uri
 import android.os.Handler
 import android.os.Looper
+import android.os.Process
 import android.os.SystemClock
 import android.view.View
 import android.webkit.CookieManager
@@ -23,6 +25,7 @@ import android.webkit.WebViewClient
 import androidx.webkit.JavaScriptReplyProxy
 import androidx.webkit.Profile
 import androidx.webkit.ProfileStore
+import androidx.webkit.UserAgentMetadata
 import androidx.webkit.WebMessageCompat
 import androidx.webkit.WebSettingsCompat
 import androidx.webkit.WebViewCompat
@@ -154,7 +157,53 @@ class HiddenBrowser(
      */
     private var expectedPage: String? = null
     private var cookieCheck: Job? = null
+
+    /** While the tab is failed: the wait before it is loaded again by itself, and how many times that was tried. */
+    private var retry: Job? = null
+    private var retriesSinceLoaded = 0
     private val main = Handler(Looper.getMainLooper())
+
+    /**
+     * Frames for the unseen page. A WebView that is never drawn gives its page next to no animation frames (measured:
+     * one every second and a half), and the site does its own background work on them: making its player, and the
+     * session check after which it hands out whole songs rather than their first minute. So the tab is "drawn" into a
+     * single pixel many times a second: each draw is one frame for the page and costs next to nothing.
+     */
+    private val framePixel = Canvas(Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888))
+    private val frameTick = object : Runnable {
+        override fun run() {
+            try {
+                webView.draw(framePixel)
+            } catch (failure: RuntimeException) {
+                // A WebView between two lives (its renderer just gone): the next tick meets the new one.
+            }
+            main.postDelayed(this, frameInterval())
+        }
+    }
+
+    /** When the page last had something to do: a load, a new player, the end of a fetch. */
+    private var livelyAt = SystemClock.elapsedRealtime()
+
+    /**
+     * True while the app is fetching a song through the page (the capture broker says so). The page then gets its
+     * frames at the full rate; an idle page gets a few a second, which keeps the phone's processor at rest.
+     */
+    var isBusy: Boolean = false
+        set(value) {
+            if (value == field) return
+            field = value
+            livelyAt = SystemClock.elapsedRealtime()
+            if (value) {
+                // Not at the idle rate's next tick: now.
+                main.removeCallbacks(frameTick)
+                main.post(frameTick)
+            }
+        }
+
+    private fun frameInterval(): Long {
+        val settling = SystemClock.elapsedRealtime() - livelyAt < SETTLE_MILLIS
+        return if (isBusy || settling || phase !is TabPhase.Loaded) FRAME_MILLIS else IDLE_FRAME_MILLIS
+    }
 
     /** The script's messages are read off the main thread, in order, then handed back to it. */
     private val reader = Executors.newSingleThreadExecutor { runnable -> Thread(runnable, "boom-bridge").apply { isDaemon = true } }
@@ -196,6 +245,7 @@ class HiddenBrowser(
             refreshCookies()
             deleteForgottenProfiles()
         }
+        main.postDelayed(frameTick, FRAME_MILLIS)
     }
 
     // MARK: Loading
@@ -241,8 +291,43 @@ class HiddenBrowser(
             TabPhase.SwitchingPage -> BoomTrace.note("tab opening a song's page")
             is TabPhase.Failed -> BoomTrace.note("tab failed: ${next.message}")
         }
+        retry?.cancel()
+        retry = null
+        // A page on its way in, or just in, has work to do (its player, its session check): full frames for a while.
+        livelyAt = SystemClock.elapsedRealtime()
+        main.removeCallbacks(frameTick)
+        main.post(frameTick)
+        when (next) {
+            is TabPhase.Loaded -> retriesSinceLoaded = 0
+            is TabPhase.Failed -> scheduleRetry()
+            TabPhase.Loading, TabPhase.SwitchingPage -> Unit
+        }
         if (state != before || always) onChange?.invoke()
         onPhaseChange?.invoke()
+    }
+
+    /**
+     * A tab that failed to load is loaded again by itself, a little later each time, so music can start once the
+     * connection is back without the listener having to do anything (or even know there is a tab).
+     */
+    private fun scheduleRetry() {
+        val wait = RETRY_WAITS_MILLIS[minOf(retriesSinceLoaded, RETRY_WAITS_MILLIS.size - 1)]
+        retriesSinceLoaded += 1
+        retry = scope.launch {
+            delay(wait)
+            if (phase is TabPhase.Failed && hasStarted) {
+                BoomTrace.note("tab loads again after a failure (try $retriesSinceLoaded)")
+                reload()
+            }
+        }
+    }
+
+    /** The phone has a network again: a failed tab does not wait out its pause. */
+    fun networkBecameAvailable() {
+        if (phase is TabPhase.Failed && hasStarted) {
+            BoomTrace.note("tab loads again: the network is back")
+            reload()
+        }
     }
 
     /** A page finished loading, or its player appeared. */
@@ -614,15 +699,20 @@ class HiddenBrowser(
         if (WebViewFeature.isFeatureSupported(WebViewFeature.REQUESTED_WITH_HEADER_ALLOW_LIST)) {
             WebSettingsCompat.setRequestedWithHeaderOriginAllowList(view.settings, emptySet())
         }
+        describeAsDesktopChrome(view.settings)
         CookieManager.getInstance().setAcceptThirdPartyCookies(view, true)
         // The renderer is kept at the app's own importance even unseen: the page fetches while the screen is off.
         view.setRendererPriorityPolicy(WebView.RENDERER_PRIORITY_IMPORTANT, false)
-        // Never in a window, but given a size, as a page laid out at nothing by nothing may not make a player.
+        // Never in a window, but given a size, as a page laid out at nothing by nothing may not make a player. The size
+        // is in the page's own units, so the page is laid out the same on every screen density.
+        val density = context.resources.displayMetrics.density
+        val width = (TAB_WIDTH_DP * density).toInt()
+        val height = (TAB_HEIGHT_DP * density).toInt()
         view.measure(
-            View.MeasureSpec.makeMeasureSpec(TAB_WIDTH, View.MeasureSpec.EXACTLY),
-            View.MeasureSpec.makeMeasureSpec(TAB_HEIGHT, View.MeasureSpec.EXACTLY),
+            View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+            View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY),
         )
-        view.layout(0, 0, TAB_WIDTH, TAB_HEIGHT)
+        view.layout(0, 0, width, height)
         view.webViewClient = Client()
         view.webChromeClient = WebChromeClient()
 
@@ -644,6 +734,41 @@ class HiddenBrowser(
         view.onResume()
         view.resumeTimers()
         return view
+    }
+
+    /**
+     * The tab says "desktop Chrome on Linux" in its user agent; the browser's other description of itself (the
+     * client hints a site can ask for) would still say "Android WebView, mobile". The two are made to agree, as a
+     * browser that contradicts itself is the first thing a site's checks notice.
+     */
+    private fun describeAsDesktopChrome(settings: WebSettings) {
+        if (!WebViewFeature.isFeatureSupported(WebViewFeature.USER_AGENT_METADATA)) return
+        val own = WebSettingsCompat.getUserAgentMetadata(settings)
+        // The WebView's own list, with its own name replaced by Chrome's: the versions and the filler entry stay real.
+        val brands = own.brandVersionList.map { brand ->
+            if (brand.brand != "Android WebView") {
+                brand
+            } else {
+                UserAgentMetadata.BrandVersion.Builder()
+                    .setBrand("Google Chrome")
+                    .setMajorVersion(brand.majorVersion)
+                    .setFullVersion(brand.fullVersion)
+                    .build()
+            }
+        }
+        val metadata = UserAgentMetadata.Builder()
+            .setBrandVersionList(brands)
+            .setFullVersion(own.fullVersion)
+            .setPlatform("Linux")
+            .setPlatformVersion("6.8.0")
+            // The processor is the phone's own: the page can see it elsewhere too.
+            .setArchitecture("arm")
+            .setBitness(if (Process.is64Bit()) 64 else 32)
+            .setModel("")
+            .setMobile(false)
+            .setWow64(false)
+            .build()
+        WebSettingsCompat.setUserAgentMetadata(settings, metadata)
     }
 
     /** Takes a WebView out of service for good: nothing of it reaches this object again, and its page stops. */
@@ -738,8 +863,19 @@ class HiddenBrowser(
         private const val PROFILES_KEY = "web.profiles"
         private const val ACTIVE_PROFILE_KEY = "web.activeProfile"
         private const val SESSION_KEY = "web.session"
-        private const val TAB_WIDTH = 480
-        private const val TAB_HEIGHT = 320
+        // The size the tab's page is laid out at, in the page's units (as tested: 480 x 320 pixels at 2.625).
+        private const val TAB_WIDTH_DP = 183
+        private const val TAB_HEIGHT_DP = 122
+
+        /** The time between two frames given to the unseen page while it has work to do, and while it has none. */
+        private const val FRAME_MILLIS = 33L
+        private const val IDLE_FRAME_MILLIS = 500L
+
+        /** How long after its last work the page keeps the full frame rate. */
+        private const val SETTLE_MILLIS = 45_000L
+
+        /** The pauses before a failed tab is loaded again; the last one repeats. */
+        private val RETRY_WAITS_MILLIS = longArrayOf(2_000, 5_000, 15_000, 30_000, 60_000)
 
         /** A page's identity for [isFromPageBeingLeft]: its path and the song it is about. */
         private fun pageKey(url: String): String {

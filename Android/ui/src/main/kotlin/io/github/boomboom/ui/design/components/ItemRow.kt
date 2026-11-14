@@ -75,6 +75,7 @@ sealed class RowLeading {
  * @param showsKind Starts a song's second line with "Song" or "Video". Lists of one kind (charts, playlists) leave it
  *   out to make room for the artist and plays.
  * @param inset The side padding. Containers that pad themselves pass 0.
+ * @param menuExtras Entries added to the item's menu after the usual ones.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -86,6 +87,7 @@ fun ItemRow(
     showsMore: Boolean = true,
     showsKind: Boolean = true,
     inset: Dp = BoomMetrics.margin,
+    menuExtras: List<MenuExtra> = emptyList(),
     onTap: (() -> Unit)? = null,
 ) {
     val actions = rememberItemActions()
@@ -158,7 +160,7 @@ fun ItemRow(
             MoreButton(item.title, Modifier.padding(end = (inset - 10.dp).coerceAtLeast(0.dp))) { isMenuOpen = true }
         }
     }
-    if (isMenuOpen) ItemMenuSheet(item, onDismiss = { isMenuOpen = false }, likeOverride = likeOverride)
+    if (isMenuOpen) ItemMenuSheet(item, onDismiss = { isMenuOpen = false }, likeOverride = likeOverride, extras = menuExtras)
 }
 
 /** [ItemRow] for a song. */

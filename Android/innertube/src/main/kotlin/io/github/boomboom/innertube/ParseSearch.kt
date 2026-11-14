@@ -2,6 +2,7 @@ package io.github.boomboom.innertube
 
 import io.github.boomboom.models.AlbumItem
 import io.github.boomboom.models.ArtistItem
+import io.github.boomboom.models.ArtistRef
 import io.github.boomboom.models.BrowseEndpoint
 import io.github.boomboom.models.MusicItem
 import io.github.boomboom.models.PlaylistItem
@@ -203,8 +204,17 @@ internal fun Parse.searchGroup(item: MusicItem, row: JsonElement): SearchFilter 
 /** The big "Top result" card: its item first, then the rows under it. */
 internal fun Parse.topResultShelf(card: JsonElement, index: Int): Shelf? {
     val cardItems = mutableListOf<MusicItem>()
-    topResultItem(card)?.let { cardItems += it }
-    for (wrapper in card["contents"].array) item(wrapper)?.let { cardItems += it }
+    val top = topResultItem(card)
+    top?.let { cardItems += it }
+    // Under an artist's card the songs' own lines leave the artist out ("Song • 5:55"): it is the card's.
+    val cardArtist = (top as? MusicItem.OfArtist)?.artist?.let { ArtistRef(name = it.name, id = it.id) }
+    for (wrapper in card["contents"].array) {
+        var found = item(wrapper) ?: continue
+        if (cardArtist != null && found is MusicItem.OfSong && found.song.artists.isEmpty()) {
+            found = MusicItem.OfSong(found.song.copy(artists = listOf(cardArtist)))
+        }
+        cardItems += found
+    }
     if (cardItems.isEmpty()) return null
     val title = card["header", "musicCardShelfHeaderBasicRenderer", "title"].runsText ?: "Top result"
     return Shelf(id = "$index:top", title = title, layout = Shelf.Layout.TOP_RESULT, items = cardItems)

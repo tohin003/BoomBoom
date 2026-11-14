@@ -21,7 +21,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.DownloadForOffline
-import androidx.compose.material.icons.outlined.Construction
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
@@ -55,7 +54,6 @@ import io.github.boomboom.ui.design.ErrorView
 import io.github.boomboom.ui.design.LoadingStyle
 import io.github.boomboom.ui.design.LoadingView
 import io.github.boomboom.ui.design.LocalAppServices
-import io.github.boomboom.ui.design.MessageView
 import io.github.boomboom.ui.design.PillButton
 import io.github.boomboom.ui.design.PillStyle
 import kotlinx.coroutines.Job
@@ -230,31 +228,4 @@ fun RefreshBox(refresh: () -> Job, modifier: Modifier = Modifier, content: @Comp
         modifier = modifier.fillMaxSize(),
         content = content,
     )
-}
-
-/** A screen another part of the work fills later (Library, Downloads, Settings). */
-@Composable
-fun ComingScreen(title: String, showsBack: Boolean) {
-    val router = LocalShellRouter.current
-    Column(
-        Modifier
-            .fillMaxSize()
-            .background(BoomColor.background),
-    ) {
-        if (showsBack) {
-            PageTopBar(title, isTitleShown = true) { router.back() }
-        } else {
-            Text(
-                title, style = BoomFont.pageTitle, color = BoomColor.textPrimary,
-                modifier = Modifier
-                    .statusBarsPadding()
-                    .padding(horizontal = BoomMetrics.margin, vertical = 12.dp)
-                    .semantics { heading() },
-            )
-        }
-        MessageView(
-            "Coming soon", message = "$title is on its way in a later version.", icon = Icons.Outlined.Construction,
-            modifier = Modifier.testTag("coming"),
-        )
-    }
 }

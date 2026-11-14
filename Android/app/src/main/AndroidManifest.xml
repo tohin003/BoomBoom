@@ -9,26 +9,50 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- Nothing of the listener's leaves the phone in a backup: the sign-in lives in the browser's own store. -->
     <application
         android:name=".runtime.BoomApplication"
         android:allowBackup="false"
+        android:dataExtractionRules="@xml/no_backup"
+        android:fullBackupContent="false"
+        android:icon="@mipmap/ic_launcher"
         android:label="BoomBoom"
+        android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@android:style/Theme.Material.NoActionBar">
+        android:theme="@style/Theme.BoomBoom">
+        <!-- One window, upright like the iPhone app. A change the phone makes under it (a keyboard attached, the
+             text size, the window's size on a folding phone) is taken by the screens as they stand: the window is
+             not made again, so the listener keeps their place. -->
         <activity
-            android:name=".debug.DebugActivity"
+            android:name=".MainActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|uiMode|density|fontScale|layoutDirection|locale"
             android:exported="true"
             android:launchMode="singleTop"
+            android:screenOrientation="portrait"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <!-- Turning the phone must not start Google's form again, and the keyboard must not cover it. -->
         <activity
             android:name=".web.SignInActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|uiMode|density"
             android:exported="false"
-            android:theme="@android:style/Theme.Material" />
+            android:theme="@android:style/Theme.Material.NoActionBar"
+            android:windowSoftInputMode="adjustResize" />
+
+        <!-- Hands the problem report (a text file in the cache) to the app the listener shares it with. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.reports"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/report_files" />
+        </provider>
 
         <service
             android:name=".service.PlaybackService"

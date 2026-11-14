@@ -86,12 +86,6 @@ class BrowseScreenshots : ScreenTest() {
     }
 
     @Test
-    fun libraryComing() {
-        showApp(services(PreviewMusicAPI(delays = false)), BrowseStart.Tab(BrowseTab.LIBRARY))
-        shot("library_coming")
-    }
-
-    @Test
     fun accountMenu() {
         val api = PreviewMusicAPI(delays = false)
         val others = listOf(PreviewMusicAPI.previewAccount.copy(name = "Sam Okafor", handle = "@samokafor"))

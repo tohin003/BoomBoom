@@ -23,7 +23,11 @@ import androidx.compose.material.icons.outlined.WifiOff
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -42,6 +46,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
 
 /** The shape of the page being loaded, for [LoadingView]. */
 enum class LoadingStyle {
@@ -210,13 +215,30 @@ fun Modifier.shimmering(): Modifier {
         }
 }
 
-/** A message with a Retry button, for a page that could not load. */
+/**
+ * How many times the phone has got a connection back since the app started (the app counts and provides it). A page
+ * that could not load watches it and tries again by itself, so the listener need not go looking for a button after
+ * leaving a lift.
+ */
+val LocalNetworkReturns = compositionLocalOf { 0 }
+
+/** A message with a Retry button, for a page that could not load. It retries by itself when the connection returns. */
 @Composable
 fun ErrorView(
     message: String = "Couldn't load this page.",
     modifier: Modifier = Modifier,
     retry: (() -> Unit)? = null,
 ) {
+    val returns = LocalNetworkReturns.current
+    val seen = remember { returns }
+    val latestRetry by rememberUpdatedState(retry)
+    LaunchedEffect(returns) {
+        if (returns != seen) {
+            // A network that has just come up needs a moment before names resolve.
+            delay(1200)
+            latestRetry?.invoke()
+        }
+    }
     Column(
         modifier
             .fillMaxWidth()

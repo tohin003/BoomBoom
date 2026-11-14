@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The one folder the app ever shares a file from: problem reports the listener chose to send. -->
+<paths>
+    <cache-path name="reports" path="reports/" />
+</paths>

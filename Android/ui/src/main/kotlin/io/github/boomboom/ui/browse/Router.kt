@@ -53,6 +53,9 @@ sealed class BrowseRoute {
     data object Moods : BrowseRoute()
     data object Settings : BrowseRoute()
 
+    /** The songs the listener played, by day (from Library). */
+    data object History : BrowseRoute()
+
     /** The songs, albums and playlists kept on the phone. */
     data object Downloads : BrowseRoute()
 
