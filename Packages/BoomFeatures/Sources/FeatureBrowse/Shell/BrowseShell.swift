@@ -314,6 +314,17 @@ extension View {
     }
 }
 
+extension View {
+    /// Takes a tab's top bar out of VoiceOver's reach while that tab is not the one shown. Hiding the page did not
+    /// reach the buttons of its bar: they went on answering for their place on the screen, so the account button of
+    /// the bar that is shown could not be found by touch after another tab had been opened. Folded into one hidden
+    /// element, the bar no longer answers.
+    func outOfVoiceOversReach(_ isOut: Bool) -> some View {
+        accessibilityElement(children: isOut ? .ignore : .contain)
+            .accessibilityHidden(isOut)
+    }
+}
+
 private struct ShellBarsInset: ViewModifier {
     @Environment(\.shellBarsHeight) private var height
     @Environment(\.isShellTabActive) private var isActive

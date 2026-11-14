@@ -51,6 +51,11 @@ private struct SearchContent: View {
             }
         }
         .onChange(of: model.text) { model.textChanged() }
+        // Results are for reading: however the search was started (the keyboard's key, a suggestion, a recent
+        // search), the keyboard goes away and stops covering half of them. Tapping the field brings it back.
+        .onChange(of: model.isShowingResults) { _, isShowingResults in
+            if isShowingResults { isFieldFocused = false }
+        }
         .onAppear {
             guard !didStart else { return }
             didStart = true

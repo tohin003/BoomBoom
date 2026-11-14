@@ -175,7 +175,10 @@ final class HomeAndPlayerUITests: BoomUITestCase {
         expect(app.buttons["Charts"], "Explore's tiles")
         XCTAssertTrue(miniSong.isHittable, "the mini player stays on Explore")
         app.buttons["Charts"].tap()
-        expect(songRows.firstMatch, "a chart row", timeout: network)
+        // The page is live: some days it opens with rows of songs or artists, some days with shelves of cards. Once
+        // it is pushed, Explore's own tiles are gone.
+        expectGone(app.buttons["Charts"], "Explore's tiles, with the Charts page pushed", timeout: network)
+        expect(items.firstMatch, "the Charts page's rows or cards", timeout: network)
         checkpoint("charts with mini player")
 
         // Scroll to the very end (the rows on screen stop changing); the last row must clear the mini player.
@@ -200,7 +203,8 @@ final class HomeAndPlayerUITests: BoomUITestCase {
         XCTAssertEqual(nowPlayingLabel.isEmpty, false)
         _ = song
         tab("Explore").tap()
-        expect(songRows.firstMatch, "Explore kept its page", timeout: 5)
+        expect(items.firstMatch, "the Charts page's rows or cards, back on Explore", timeout: 5)
+        XCTAssertFalse(app.buttons["Charts"].exists, "Explore kept the Charts page, not its root")
         checkpoint("back on explore")
     }
 

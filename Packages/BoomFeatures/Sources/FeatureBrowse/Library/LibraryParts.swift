@@ -7,7 +7,7 @@ import SwiftUI
 /// button, so this one repeats its layout.
 struct LibraryTopBar: View {
     @Environment(AppServices.self) private var services
-    @Environment(\.boomNavigator) private var navigator
+    @Environment(\.isShellTabActive) private var isTabActive
 
     var body: some View {
         HStack(spacing: 4) {
@@ -33,6 +33,7 @@ struct LibraryTopBar: View {
         .padding(.leading, BoomMetrics.margin)
         .padding(.trailing, 8)
         .frame(height: 52)
+        .outOfVoiceOversReach(!isTabActive)
     }
 
     private func barIcon(_ name: String, size: CGFloat) -> some View {
@@ -42,29 +43,24 @@ struct LibraryTopBar: View {
             .contentShape(Rectangle())
     }
 
-    @ViewBuilder
+    /// Straight to Settings, signed in or not: the accounts, the sound, the cache and downloads are all there, and
+    /// signed out the page itself offers the sign-in.
     private var accountButton: some View {
-        if services.session.isSignedIn {
-            NavigationLink(value: BrowseRoute.settings) {
-                Group {
-                    if let account = services.session.account {
-                        ArtworkView(account.artwork, width: 30, isCircle: true)
-                    } else {
-                        Image(systemName: "person.crop.circle.fill").font(.system(size: 26))
-                    }
+        NavigationLink(value: BrowseRoute.settings) {
+            Group {
+                if let account = services.session.account {
+                    ArtworkView(account.artwork, width: 30, isCircle: true)
+                } else if services.session.isSignedIn {
+                    Image(systemName: "person.crop.circle.fill").font(.system(size: 26))
+                } else {
+                    Image(systemName: "person.crop.circle").font(.system(size: 24))
                 }
-                .frame(width: BoomMetrics.minimumTarget, height: BoomMetrics.minimumTarget)
-                .contentShape(Rectangle())
             }
-            .accessibilityLabel("Account and settings")
-        } else {
-            Button {
-                navigator.signIn()
-            } label: {
-                barIcon("person.crop.circle", size: 24)
-            }
-            .accessibilityLabel("Sign in")
+            .frame(width: BoomMetrics.minimumTarget, height: BoomMetrics.minimumTarget)
+            .contentShape(Rectangle())
         }
+        .accessibilityLabel("Account and settings")
+        .accessibilityIdentifier("library.account")
     }
 }
 

@@ -42,6 +42,10 @@ Quality and accuracy come first. No YouTube or YouTube Music logos, names or art
 5. **Builds:** give `xcodebuild` your own `-derivedDataPath build/dd-<your-task>` so parallel builds do not collide.
    Simulators: use only the simulator your task names (each worker has its own, so screenshots do not show another
    worker's app); if none is named, "iPhone 17". Never install on or launch anything on the physical iPhone.
+   No simulator is kept on this Mac (all were removed on 14 November 2026 to free 20 GB): make the one you need
+   first, `xcrun simctl create "iPhone 17" "iPhone 17"`, and delete it when the work is done. On a simulator that
+   is busy playing a song, a synthetic tap on a switch or a system dialog is often ignored (an idle app takes every
+   one): repeat a tap that changed nothing, as `BrowseUITests.flip` does, before calling it a fault.
 6. **Never write secrets, cookies, tokens or the person's e-mail address** into files, logs or reports.
 7. Comments say what the code is for, in plain words. No comment noise.
 

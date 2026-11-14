@@ -39,7 +39,7 @@ final class BrowseUITests: BoomUITestCase {
     }
 
     /// Flow 7a: Library asks to sign in; the sheet opens on Google's page and Cancel closes it; Home's account
-    /// button opens it too. Nothing is typed into the page.
+    /// menu opens it too. Nothing is typed into the page.
     func testLibrarySignedOut() {
         launch()
         expect(any("shelf.header").firstMatch, "Home", timeout: network)
@@ -57,6 +57,8 @@ final class BrowseUITests: BoomUITestCase {
 
         tab("Home").tap()
         expect(any("shelf.header").firstMatch, "Home", timeout: network)
+        // Home's account button is a menu; its "Sign in" is the only one on screen once the menu is open.
+        firstHittable(any("topbar.account")).tap()
         firstHittable(app.buttons.matching(NSPredicate(format: "label == 'Sign in'"))).tap()
         expectSignInSheet()
         app.buttons["Cancel"].tap()
@@ -73,10 +75,9 @@ final class BrowseUITests: BoomUITestCase {
         let autoplay = app.switches.matching(NSPredicate(format: "label BEGINSWITH 'Autoplay'")).firstMatch
         expect(autoplay, "the autoplay switch")
         let wasOn = isOn(autoplay)
-        tapSwitch(autoplay)
-        eventually("autoplay toggles", timeout: 5) { isOn(autoplay) != wasOn }
-        tapSwitch(autoplay)
-        eventually("autoplay toggles back", timeout: 5) { isOn(autoplay) == wasOn }
+        flip(autoplay, "autoplay toggles")
+        flip(autoplay, "autoplay toggles back")
+        XCTAssertEqual(isOn(autoplay), wasOn, "autoplay is back where it was")
 
         app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Equaliser and amplifier'")).firstMatch.tap()
         expect(app.buttons["Done"], "the sound sheet")
@@ -102,7 +103,7 @@ final class BrowseUITests: BoomUITestCase {
         clear.tap()
         expect(app.staticTexts["Empty the song cache?"], "the confirmation", timeout: 5)
         checkpoint("confirmation")
-        cancelConfirmation()
+        cancelConfirmation(of: app.staticTexts["Empty the song cache?"])
         expectGone(app.staticTexts["Empty the song cache?"], "the confirmation after Cancel")
         XCTAssertTrue(clear.isEnabled, "nothing was cleared")
         checkpoint("cancelled")
@@ -119,18 +120,36 @@ final class BrowseUITests: BoomUITestCase {
         (toggle.value as? String) == "1"
     }
 
-    /// Taps the switch itself (on the right), not its label.
-    private func tapSwitch(_ toggle: XCUIElement) {
-        toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: 0.5)).tap()
+    /// Flips a switch by tapping the switch itself (on the right), not its label, and waits until it shows.
+    ///
+    /// While a song is loading or playing, the simulator ignores many synthetic taps on a switch (measured: 4 of 14
+    /// and 14 of 20; an idle app took 10 of 10), so a tap that changed nothing is made again. Whether a finger on a
+    /// phone ever sees this is not known from here.
+    private func flip(_ toggle: XCUIElement, _ what: String, file: StaticString = #filePath, line: UInt = #line) {
+        let before = isOn(toggle)
+        for _ in 0..<6 {
+            toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: 0.5)).tap()
+            let deadline = Date.now.addingTimeInterval(2.5)
+            repeat {
+                if isOn(toggle) != before { return }
+                RunLoop.current.run(until: .now.addingTimeInterval(0.25))
+            } while Date.now < deadline
+        }
+        failureShot("never: \(what)")
+        XCTFail("\(what): six taps on the switch changed nothing", file: file, line: line)
     }
 
-    /// A confirmation dialog's Cancel: a button when there is one, else a tap outside it.
-    private func cancelConfirmation() {
-        let cancel = app.buttons["Cancel"]
-        if cancel.exists, cancel.isHittable {
-            cancel.tap()
-        } else {
-            app.windows.firstMatch.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.1)).tap()
+    /// A confirmation's Cancel: a button when there is one, else a tap outside it (on this iPhone the question is a
+    /// small bubble by its button, with no Cancel). As with `flip`, a tap the simulator ignored is made again.
+    private func cancelConfirmation(of question: XCUIElement) {
+        for _ in 0..<4 where question.exists {
+            let cancel = app.buttons["Cancel"]
+            if cancel.exists, cancel.isHittable {
+                cancel.tap()
+            } else {
+                app.windows.firstMatch.coordinate(withNormalizedOffset: CGVector(dx: 0.25, dy: 0.12)).tap()
+            }
+            if question.waitForNonExistence(timeout: 2.5) { return }
         }
     }
 }

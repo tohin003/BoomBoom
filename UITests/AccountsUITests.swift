@@ -1,8 +1,8 @@
 import XCTest
 
-/// The accounts, signed out as the simulator is: Settings offers the sign-in, Home's account button opens Google's
-/// sheet, and giving up leaves no empty account behind, now and after a relaunch. Nothing is typed into Google's
-/// page: a real sign-in cannot be automated, and is checked on the phone.
+/// The accounts, signed out as the simulator is: Settings offers the sign-in and can be reached from every tab,
+/// Home's account menu opens Google's sheet, and giving up leaves no empty account behind, now and after a relaunch.
+/// Nothing is typed into Google's page: a real sign-in cannot be automated, and is checked on the phone.
 @MainActor
 final class AccountsUITests: BoomUITestCase {
     /// Settings signed out: the one "Sign in" row, under "Account", and nothing about other accounts.
@@ -21,24 +21,27 @@ final class AccountsUITests: BoomUITestCase {
         checkpoint("settings after cancel")
     }
 
-    /// Home's account button opens the sign-in sheet; Cancel leaves no account (or empty profile) behind, in this
-    /// run and after a relaunch.
-    func testHomeAccountButtonOpensSignInAndCancelLeavesNothing() {
+    /// Home's account button is a menu, signed out too: "Sign in" opens the sign-in sheet, and Cancel leaves no
+    /// account (or empty profile) behind, in this run and after a relaunch.
+    func testHomeAccountMenuOpensSignInAndCancelLeavesNothing() {
         launch()
         expect(any("shelf.header").firstMatch, "Home", timeout: network)
-        let button = expect(any("topbar.signIn").firstMatch, "Home's sign-in button", timeout: 10)
-        XCTAssertEqual(button.label, "Sign in")
-        XCTAssertFalse(any("topbar.account").firstMatch.exists, "no account menu while signed out")
+        let button = expect(any("topbar.account").firstMatch, "Home's account button", timeout: 10)
+        XCTAssertEqual(button.label, "Account and settings")
         button.tap()
+        let signIn = menuItem("Sign in")
+        // Signed out: nothing to switch to and nothing to add, only the sign-in and Settings.
+        XCTAssertTrue(isOnScreen(menuItem("Settings")), "Settings in the account menu while signed out")
+        XCTAssertFalse(app.buttons["Add another account"].exists, "no Add another account while signed out")
+        checkpoint("account menu signed out")
+        signIn.tap()
         expectSignInSheet()
         app.buttons["Cancel"].tap()
         expectGone(app.navigationBars["Sign in with Google"], "the sign-in sheet after Cancel")
-        // Still signed out: the plain sign-in button, not the account menu.
-        expect(any("topbar.signIn").firstMatch, "Home's sign-in button after Cancel", timeout: 10)
-        XCTAssertFalse(any("topbar.account").firstMatch.exists, "no account menu after Cancel")
 
-        // Swiping the sheet away is giving up too.
-        any("topbar.signIn").firstMatch.tap()
+        // Still signed out: the menu offers the sign-in again. Swiping the sheet away is giving up too.
+        expect(any("topbar.account").firstMatch, "Home's account button after Cancel", timeout: 10).tap()
+        menuItem("Sign in").tap()
         expectSignInSheet()
         app.navigationBars["Sign in with Google"].swipeDown(velocity: .fast)
         if app.navigationBars["Sign in with Google"].exists { app.buttons["Cancel"].tap() }
@@ -53,6 +56,36 @@ final class AccountsUITests: BoomUITestCase {
         checkpoint("settings after relaunch")
     }
 
+    /// Settings can be reached without an account, from every tab: Home's and Explore's account menu, and the
+    /// Library's account button. (The sound, the cache, downloads and the diagnostic log live there.)
+    func testSettingsIsReachableSignedOut() {
+        launch()
+        expect(any("shelf.header").firstMatch, "Home", timeout: network)
+        expect(any("topbar.account").firstMatch, "Home's account button", timeout: 10).tap()
+        menuItem("Settings").tap()
+        expect(app.navigationBars["Settings"], "Settings from Home's account menu", timeout: 10)
+        expectSignedOutLook("Settings from Home")
+        checkpoint("settings from home")
+        goBack()
+        expect(any("shelf.header").firstMatch, "Home after leaving Settings", timeout: 10)
+
+        tab("Explore").tap()
+        expect(app.buttons["Charts"], "Explore", timeout: network)
+        firstHittable(any("topbar.account"), timeout: 10).tap()
+        menuItem("Settings").tap()
+        expect(app.navigationBars["Settings"], "Settings from Explore's account menu", timeout: 10)
+        goBack()
+        expect(app.buttons["Charts"], "Explore after leaving Settings", timeout: 10)
+
+        tab("Library").tap()
+        let library = firstHittable(any("library.account"), timeout: 10)
+        XCTAssertEqual(library.label, "Account and settings")
+        library.tap()
+        expect(app.navigationBars["Settings"], "Settings from the Library's account button", timeout: 10)
+        expectSignedOutLook("Settings from the Library")
+        checkpoint("settings from library")
+    }
+
     // MARK: Pieces
 
     /// The signed-out look: the "Account" header with the sign-in row, no account rows, nothing to add.
@@ -63,6 +96,11 @@ final class AccountsUITests: BoomUITestCase {
         XCTAssertFalse(any("settings.account").firstMatch.exists, "no account rows (\(moment))", file: file, line: line)
         XCTAssertFalse(any("settings.addAccount").firstMatch.exists, "no Add another account (\(moment))",
                        file: file, line: line)
+    }
+
+    /// An item of the account menu, once the menu is open.
+    private func menuItem(_ title: String) -> XCUIElement {
+        firstHittable(app.buttons.matching(NSPredicate(format: "label == %@", title)), timeout: 10)
     }
 
     private func expectSignInSheet() {
