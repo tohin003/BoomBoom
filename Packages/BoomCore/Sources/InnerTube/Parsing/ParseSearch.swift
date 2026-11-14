@@ -152,9 +152,18 @@ extension Parse {
     /// The big "Top result" card: its item first, then the rows under it.
     static func topResultShelf(_ card: JSON, index: Int) -> Shelf? {
         var items: [MusicItem] = []
-        if let top = topResultItem(card) { items.append(top) }
+        let top = topResultItem(card)
+        if let top { items.append(top) }
+        // Under an artist's card the songs' own lines leave the artist out ("Song • 5:55"): it is the card's.
+        var cardArtist: ArtistRef?
+        if case .artist(let artist)? = top { cardArtist = ArtistRef(name: artist.name, id: artist.id) }
         for wrapper in card["contents"].array {
-            if let item = item(wrapper) { items.append(item) }
+            guard var item = item(wrapper) else { continue }
+            if let cardArtist, case .song(var song) = item, song.artists.isEmpty {
+                song.artists = [cardArtist]
+                item = .song(song)
+            }
+            items.append(item)
         }
         guard !items.isEmpty else { return nil }
         let title = card["header", "musicCardShelfHeaderBasicRenderer", "title"].runsText ?? "Top result"

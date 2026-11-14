@@ -89,6 +89,11 @@ public final class HiddenBrowser: NSObject, SessionBackend {
     /// The ad rules, compiled once and given to every web view.
     private var adRules: WKContentRuleList?
     private var hasStarted = false
+    /// While the tab is failed: the wait before it is loaded again by itself, and how many times that was tried.
+    private var retry: Task<Void, Never>?
+    private var retriesSinceLoaded = 0
+    /// The pauses before a failed tab is loaded again; the last one repeats.
+    private static let retryWaits: [Duration] = [.seconds(2), .seconds(5), .seconds(15), .seconds(30), .seconds(60)]
     private var holdTask: Task<Void, Never>?
     private var cookieRefresh: Task<Void, Never>?
     #if canImport(UIKit)
@@ -171,8 +176,29 @@ public final class HiddenBrowser: NSObject, SessionBackend {
         case .switchingPage: BoomTrace.note("tab opening a song's page")
         case .failed(let message): BoomTrace.note("tab failed: \(message)")
         }
+        retry?.cancel()
+        retry = nil
+        switch next {
+        case .loaded: retriesSinceLoaded = 0
+        case .failed: scheduleRetry()
+        case .loading, .switchingPage: break
+        }
         if state != before || always { onChange?() }
         onPhaseChange?()
+    }
+
+    /// A tab that failed to load is loaded again by itself, a little later each time, so music can start once the
+    /// connection is back without the listener having to do anything (or even know there is a tab).
+    private func scheduleRetry() {
+        let wait = Self.retryWaits[min(retriesSinceLoaded, Self.retryWaits.count - 1)]
+        retriesSinceLoaded += 1
+        let attempt = retriesSinceLoaded
+        retry = Task { [weak self] in
+            try? await Task.sleep(for: wait)
+            guard !Task.isCancelled, let self, self.hasStarted, case .failed = self.phase else { return }
+            BoomTrace.note("tab loads again after a failure (try \(attempt))")
+            self.reload()
+        }
     }
 
     /// A page finished loading, or its player appeared.

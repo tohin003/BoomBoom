@@ -56,6 +56,41 @@ struct SearchFixtureTests {
         #expect(suggestions == [.query(SuggestedQuery(text: "oasis", runs: [.init(text: "oasis", isBold: false)], isFromHistory: true))])
     }
 
+    @Test func songsUnderAnArtistCardAreThatArtists() throws {
+        func artistLink(_ name: String, _ id: String) -> String {
+            #"{"text": "\#(name)", "navigationEndpoint": {"browseEndpoint": {"browseId": "\#(id)", "#
+                + #""browseEndpointContextSupportedConfigs": {"browseEndpointContextMusicConfig": "#
+                + #"{"pageType": "MUSIC_PAGE_TYPE_ARTIST"}}}}}"#
+        }
+        func row(_ title: String, _ videoId: String, line: String) -> String {
+            #"{"musicResponsiveListItemRenderer": {"flexColumns": ["#
+                + #"{"musicResponsiveListItemFlexColumnRenderer": {"text": {"runs": [{"text": "\#(title)", "#
+                + #""navigationEndpoint": {"watchEndpoint": {"videoId": "\#(videoId)"}}}]}}}, "#
+                + #"{"musicResponsiveListItemFlexColumnRenderer": {"text": {"runs": [\#(line)]}}}], "#
+                + #""playlistItemData": {"videoId": "\#(videoId)"}}}"#
+        }
+        let dot = #"{"text": " \u2022 "}"#
+        // The service leaves the artist out of the first line: the card says whose the song is.
+        let first = row("First Song", "aaaaaaaaaaa", line: #"{"text": "Song"}, \#(dot), {"text": "3:05"}"#)
+        let second = row(
+            "Second Song", "bbbbbbbbbbb",
+            line: #"{"text": "Song"}, \#(dot), \#(artistLink("Somebody Else", "UCsomebodyelse")), \#(dot), {"text": "4:10"}"#
+        )
+        let card = try JSON(data: Data(
+            (#"{"title": {"runs": [\#(artistLink("The Example Band", "UCexampleband"))]}, "#
+                + #""subtitle": {"runs": [{"text": "Artist"}, \#(dot), {"text": "1M monthly audience"}]}, "#
+                + #""contents": [\#(first), \#(second)]}"#).utf8
+        ))
+        let shelf = try #require(Parse.topResultShelf(card, index: 0))
+        #expect(shelf.items.count == 3)
+        #expect(shelf.items[0].artist?.id == "UCexampleband")
+        let firstSong = try #require(shelf.items[1].song)
+        #expect(firstSong.artists == [ArtistRef(name: "The Example Band", id: "UCexampleband")])
+        #expect(firstSong.duration == 185)
+        let secondSong = try #require(shelf.items[2].song)
+        #expect(secondSong.artists == [ArtistRef(name: "Somebody Else", id: "UCsomebodyelse")])
+    }
+
     @Test func unfilteredSearchFlatLayout() throws {
         let results = Parse.searchResults(try fixture("search_all"), query: "oasis wonderwall", filter: nil)
         #expect(results.continuation == nil)
